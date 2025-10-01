@@ -56,6 +56,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatically starts test API server
   - Records all example cassettes
   - Stops server when complete
+- Comprehensive secret redaction system (`ReqVCR.Redactor`):
+  - **CRITICAL SECURITY**: Ensures secrets never get committed to git cassettes
+  - Built-in redaction for auth headers, query parameters, response bodies
+  - VCR-style configurable filters for app-specific secrets
+  - Multi-layer protection: headers → query params → JSON keys → pattern matching
+  - Automatic redaction of Bearer tokens, API keys, long alphanumeric strings
+  - Support for GitHub tokens, Stripe keys, UUIDs, and custom patterns
 
 [Unreleased]: https://github.com/Makesesama/req_vcr/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/Makesesama/req_vcr/releases/tag/v0.1.0

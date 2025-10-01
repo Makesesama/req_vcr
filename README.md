@@ -211,19 +211,38 @@ Each line is a JSON object containing:
 
 ### Redaction
 
-ReqVCR automatically redacts sensitive data:
+**🔒 ReqVCR ensures secrets never get committed to git** by automatically redacting sensitive data from cassettes.
 
-**Headers** (set to `<REDACTED>`):
-- `authorization`
+#### Built-in Redaction
 
-**Query parameters** (set to `<REDACTED>`):
-- `token`
-- `apikey`
-- `api_key`
+**Auth headers** (→ `<REDACTED>`):
+- `authorization`, `x-api-key`, `x-auth-token`, `cookie`, etc.
 
-**Volatile response headers** (removed):
-- `date`, `server`, `set-cookie`
-- `request-id`, `x-request-id`, `x-amzn-trace-id`
+**Auth query parameters** (→ `<REDACTED>`):
+- `token`, `api_key`, `access_token`, `refresh_token`, `jwt`, etc.
+
+**Response body patterns**:
+- Bearer tokens → `Bearer <REDACTED>`
+- Long alphanumeric strings (32+ chars) → `<REDACTED>`
+- GitHub tokens (`ghp_*`) → `<REDACTED>`
+- JSON keys containing "token", "key", "secret", "password" → `<REDACTED>`
+
+**Volatile headers** (removed entirely):
+- `date`, `server`, `set-cookie`, `request-id`, etc.
+
+#### Custom Redaction (VCR-style)
+
+For app-specific secrets, configure custom filters:
+
+```elixir
+# config/test.exs
+config :req_vcr, :filters, [
+  {"<API_KEY>", fn -> System.get_env("API_KEY") end},
+  {"<SHOPIFY_TOKEN>", fn -> Application.get_env(:my_app, :shopify_token) end}
+]
+```
+
+These filters apply to headers, query parameters, and response bodies.
 
 ## Example Workflow
 
@@ -442,9 +461,8 @@ ReqVCR.allow(MyApp.ReqStub, self(), spawned_pid)
 
 ## Limitations
 
-- Cassettes are stored as plain text - don't commit real secrets
 - Response bodies are base64-encoded, not human-readable in cassettes
-- Redaction is automatic and not currently configurable
+- Request matching is based on method + URI by default (configurable via `match_on`)
 
 ## Contributing
 

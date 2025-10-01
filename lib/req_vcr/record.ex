@@ -3,8 +3,9 @@ defmodule ReqVCR.Record do
   Handles recording HTTP requests to cassettes.
   """
 
+  alias ReqVCR.Redactor
+
   @volatile_headers ~w[date server set-cookie request-id x-request-id x-amzn-trace-id]
-  @auth_params ~w[token apikey api_key]
 
   @doc """
   Records a live HTTP request to a cassette.
@@ -34,9 +35,8 @@ defmodule ReqVCR.Record do
     entry = %{
       req: %{
         method: method,
-        url: redact_url(url),
-        # Store the headers we forwarded
-        headers: Enum.into(headers, %{}),
+        url: Redactor.redact_url(url),
+        headers: Redactor.redact_headers(headers),
         body_hash: hash_body(method, body)
       },
       resp: normalized_resp
@@ -67,36 +67,13 @@ defmodule ReqVCR.Record do
 
         {key, string_value}
       end)
-      |> Enum.into(%{})
+      |> Redactor.redact_headers()
 
     %{
       status: response.status,
       headers: headers,
-      body_b64: Base.encode64(response.body || "")
+      body_b64: Base.encode64(Redactor.redact_response_body(response.body || ""))
     }
-  end
-
-  defp redact_url(url) do
-    uri = URI.parse(url)
-
-    redacted_query =
-      if uri.query do
-        uri.query
-        |> URI.decode_query()
-        |> Enum.map(fn {key, value} ->
-          if String.downcase(key) in @auth_params do
-            {key, "<REDACTED>"}
-          else
-            {key, value}
-          end
-        end)
-        |> URI.encode_query()
-      else
-        nil
-      end
-
-    %{uri | query: redacted_query}
-    |> URI.to_string()
   end
 
   defp hash_body(method, body) do

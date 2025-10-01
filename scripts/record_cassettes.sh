@@ -26,6 +26,10 @@ else
     exit 1
 fi
 
+# Clear existing cassettes to ensure clean redaction
+echo "Clearing existing cassettes..."
+rm -rf test/support/cassettes/ExampleAPI/
+
 # Record cassettes
 echo "Recording cassettes..."
 REQ_VCR=all mix test test/example_api_test.exs
