@@ -1,0 +1,5 @@
+# Ignore all Mix.Task related warnings - these are development-only CLI tools
+lib/mix/tasks/req_vcr.audit.ex
+lib/mix/tasks/req_vcr.prune.ex
+lib/mix/tasks/req_vcr.rename.ex
+lib/mix/tasks/req_vcr.show.ex

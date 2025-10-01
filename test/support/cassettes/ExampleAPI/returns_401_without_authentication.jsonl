@@ -1,0 +1,1 @@
+{"req":{"url":"http://localhost:4001/api/users","headers":{"accept-encoding":"gzip","user-agent":"req/0.5.15"},"method":"GET","body_hash":"-"},"resp":{"status":401,"headers":{"cache-control":"max-age=0, private, must-revalidate","content-length":"24","content-type":"application/json; charset=utf-8"},"body_b64":"eyJlcnJvciI6IlVuYXV0aG9yaXplZCJ9"}}

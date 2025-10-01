@@ -1,0 +1,28 @@
+defmodule ReqVCR.Replay do
+  @moduledoc """
+  Handles replaying HTTP requests from cassettes.
+  """
+
+  @doc """
+  Replays a response from a cassette entry.
+  """
+  @spec replay_response(Plug.Conn.t(), map()) :: Plug.Conn.t()
+  def replay_response(conn, entry) do
+    resp = entry["resp"]
+
+    # Decode body from base64
+    body = if resp["body_b64"], do: Base.decode64!(resp["body_b64"]), else: ""
+
+    # Build response
+    conn
+    |> Plug.Conn.put_status(resp["status"])
+    |> put_headers(resp["headers"] || %{})
+    |> Plug.Conn.resp(resp["status"], body)
+  end
+
+  defp put_headers(conn, headers) do
+    Enum.reduce(headers, conn, fn {key, value}, acc ->
+      Plug.Conn.put_resp_header(acc, key, value)
+    end)
+  end
+end
