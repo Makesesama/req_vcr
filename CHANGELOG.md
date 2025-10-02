@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Pluggable JSON system** - Support for custom JSON libraries via `ReqVCR.JSON` behavior
+  - `ReqVCR.JSON.Jason` adapter (default) with runtime availability checks
+  - `ReqVCR.JSON.Poison` adapter with graceful fallback when not available
+  - Application config: `config :req_vcr, :json_library, MyAdapter`
+  - Comprehensive adapter test suite with real cassette creation/loading
+- **CassetteEntry struct** - Type-safe cassette data modeling with validation
+  - Nested `ReqVCR.CassetteEntry.Request` and `Response` structs
+  - Built-in validation with helpful error messages
+  - Helper functions: `new/2`, `from_raw/1`, `to_map/1`, `validate/1`
+- **Test utilities** - Shared helpers to reduce test code duplication
+  - `ReqVCR.TestHelpers.with_module/3` for conditional module tests
+  - `ReqVCR.TestHelpers.with_config/4` for application config setup/teardown
+  - `ReqVCR.TestHelpers.with_module_and_config/6` combining both patterns
+- **Development tools** - Mix task for code quality enforcement
+  - `mix precommit` alias running format, credo, dialyzer, and tests
+
+### Changed
+- **Improved error handling** throughout the codebase
+  - Replaced bare `rescue _ -> body` clauses with specific exception handling
+  - Added logging for JSON decoding failures and network errors during recording
+  - Consistent use of `case` statements instead of exception-prone `!` functions
+- **Better test organization** - Separated JSONL format tests into dedicated file
+  - `test/req_vcr/jsonl_test.exs` for JSONL-specific functionality
+  - `test/req_vcr/json/` directory for JSON adapter tests
+  - Improved test cleanup preserving fixture files
+- **Optional dependencies** - Made JSON libraries optional to reduce bloat
+  - Jason and Poison marked as `optional: true` in mix.exs
+  - Runtime checks with helpful error messages when libraries are missing
+
+### Fixed
+- **Error handling security** - Prevented silent failures that could mask issues
+- **Test reliability** - Fixed cassette cleanup logic to preserve fixture directories
+- **Code quality** - Resolved Credo warnings for negated conditions and formatting
+
 ## [0.1.0] - 2025-10-02
 
 ### Added
