@@ -64,7 +64,7 @@ defmodule ReqVCR.MixProject do
         "GitHub" => @source_url,
         "Changelog" => "#{@source_url}/blob/main/CHANGELOG.md"
       },
-      maintainers: ["makussu"]
+      maintainers: ["Makesesama"]
     ]
   end
 
