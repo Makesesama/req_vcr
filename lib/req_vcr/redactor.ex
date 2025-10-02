@@ -110,21 +110,17 @@ defmodule ReqVCR.Redactor do
 
   # Redact secrets in JSON responses
   defp redact_json_secrets(body) do
-    case Jason.decode(body) do
+    case ReqVCR.JSON.decode(body) do
       {:ok, json} ->
         json
         |> redact_json_values()
-        |> Jason.encode!()
+        |> ReqVCR.JSON.encode!()
 
       {:error, _} ->
         # Not valid JSON, return as-is
         body
     end
   rescue
-    Jason.EncodeError ->
-      # JSON encoding failed after redaction, return original
-      body
-
     exception ->
       # Log unexpected errors but don't crash redaction
       require Logger

@@ -21,10 +21,13 @@ Add `req_vcr` to your list of dependencies in `mix.exs`:
 def deps do
   [
     {:req, "~> 0.5"},
-    {:req_vcr, "~> 0.1.0"}
+    {:req_vcr, "~> 0.1.0"},
+    {:jason, "~> 1.4"}  # Required for default JSON adapter
   ]
 end
 ```
+
+**Note**: `jason` is an optional dependency. If you want to use a different JSON library, configure it as shown in the [Advanced Configuration](#custom-json-library) section.
 
 ## Setup
 
@@ -285,6 +288,41 @@ end
 ```
 
 ## Advanced Configuration
+
+### Custom JSON Library
+
+By default, ReqVCR uses Jason for JSON encoding/decoding. You can configure a different JSON library to:
+
+- Use your existing JSON library for consistency across your application
+- Take advantage of performance characteristics of different JSON libraries
+- Avoid adding Jason as a dependency if you already use another JSON library
+
+```elixir
+# config/config.exs
+config :req_vcr, :json_library, MyApp.JSONAdapter
+```
+
+Your adapter must implement the `ReqVCR.JSON` behavior:
+
+```elixir
+defmodule MyApp.JSONAdapter do
+  @behaviour ReqVCR.JSON
+
+  @impl ReqVCR.JSON
+  def encode!(data), do: MyJSON.encode!(data)
+
+  @impl ReqVCR.JSON
+  def decode(binary), do: MyJSON.decode(binary)
+
+  @impl ReqVCR.JSON
+  def decode!(binary), do: MyJSON.decode!(binary)
+end
+```
+
+**Popular JSON libraries you can adapt:**
+- `Poison` - Pure Elixir JSON library
+- `JSX` - Erlang JSON library
+- `jiffy` - Fast NIF-based JSON library
 
 ### Custom Default Stub Name
 

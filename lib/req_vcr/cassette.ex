@@ -60,7 +60,7 @@ defmodule ReqVCR.Cassette do
 
     # Convert struct to map and encode
     entry_map = CassetteEntry.to_map(entry)
-    encoded_entry = Jason.encode!(entry_map)
+    encoded_entry = ReqVCR.JSON.encode!(entry_map)
     File.write!(path, encoded_entry <> "\n", [:append])
     :ok
   end
@@ -87,7 +87,7 @@ defmodule ReqVCR.Cassette do
 
   # Decode a single line with error handling and line number context
   defp decode_line({line, line_number}) do
-    case Jason.decode(line) do
+    case ReqVCR.JSON.decode(line) do
       {:ok, raw_entry} ->
         case validate_entry(raw_entry) do
           {:ok, cassette_entry} ->
@@ -98,7 +98,7 @@ defmodule ReqVCR.Cassette do
             nil
         end
 
-      {:error, %Jason.DecodeError{} = error} ->
+      {:error, error} ->
         Logger.warning(
           "Skipping malformed JSON at line #{line_number}: #{Exception.message(error)}"
         )

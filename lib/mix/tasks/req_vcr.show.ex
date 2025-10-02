@@ -109,7 +109,7 @@ defmodule Mix.Tasks.ReqVcr.Show do
     |> File.stream!()
     |> Stream.map(&String.trim/1)
     |> Stream.reject(&(&1 == ""))
-    |> Stream.map(&Jason.decode!/1)
+    |> Stream.map(&ReqVCR.JSON.decode!/1)
     |> Enum.to_list()
   rescue
     e ->
@@ -145,7 +145,7 @@ defmodule Mix.Tasks.ReqVcr.Show do
 
   defp show_raw(entries) do
     Enum.each(entries, fn entry ->
-      Mix.Shell.IO.info(Jason.encode!(entry, pretty: true))
+      Mix.Shell.IO.info(ReqVCR.JSON.encode!(entry))
       Mix.Shell.IO.info("")
     end)
   end
@@ -223,7 +223,7 @@ defmodule Mix.Tasks.ReqVcr.Show do
     cond do
       opts[:decode_body] && json_content_type?(headers) ->
         try do
-          body |> Jason.decode!() |> Jason.encode!(pretty: true)
+          body |> ReqVCR.JSON.decode!() |> ReqVCR.JSON.encode!()
         rescue
           _ -> truncate_body(body)
         end

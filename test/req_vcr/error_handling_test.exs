@@ -179,7 +179,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       # Test various unicode scenarios
       unicode_body =
-        Jason.encode!(%{
+        ReqVCR.JSON.encode!(%{
           "emoji" => "🚀🌟",
           "chinese" => "你好世界",
           "arabic" => "مرحبا بالعالم",
