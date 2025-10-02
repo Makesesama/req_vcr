@@ -25,7 +25,8 @@ defmodule ReqVCR.MixProject do
       dialyzer: [
         plt_add_apps: [:mix],
         ignore_warnings: "dialyzer.ignore-warnings"
-      ]
+      ],
+      aliases: aliases()
     ]
   end
 
@@ -72,6 +73,17 @@ defmodule ReqVCR.MixProject do
       extras: ["README.md", "CHANGELOG.md"],
       source_url: @source_url,
       source_ref: "v#{@version}"
+    ]
+  end
+
+  defp aliases do
+    [
+      precommit: [
+        "format --check-formatted",
+        "credo --strict",
+        "dialyzer",
+        "test"
+      ]
     ]
   end
 end
