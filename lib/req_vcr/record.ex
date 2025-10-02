@@ -3,7 +3,7 @@ defmodule ReqVCR.Record do
   Handles recording HTTP requests to cassettes.
   """
 
-  alias ReqVCR.Redactor
+  alias ReqVCR.{Cassette, CassetteEntry, Redactor}
 
   @volatile_headers ~w[date server set-cookie request-id x-request-id x-amzn-trace-id]
 
@@ -44,19 +44,29 @@ defmodule ReqVCR.Record do
     # Normalize and redact response
     normalized_resp = normalize_response(live_response)
 
-    # Build cassette entry
-    entry = %{
-      req: %{
-        method: method,
-        url: Redactor.redact_url(url),
-        headers: Redactor.redact_headers(headers),
-        body_hash: hash_body(method, body)
-      },
-      resp: normalized_resp
-    }
-
-    # Append to cassette
-    append_to_cassette(cassette_path, entry)
+    # Build cassette entry using structs
+    with {:ok, req} <-
+           CassetteEntry.Request.new(
+             method,
+             Redactor.redact_url(url),
+             Redactor.redact_headers(headers),
+             hash_body(method, body)
+           ),
+         {:ok, resp} <-
+           CassetteEntry.Response.new(
+             normalized_resp[:status],
+             normalized_resp[:headers],
+             normalized_resp[:body_b64]
+           ),
+         {:ok, entry} <- CassetteEntry.new(req, resp) do
+      # Append to cassette
+      Cassette.append(cassette_path, entry)
+    else
+      {:error, reason} ->
+        require Logger
+        Logger.error("Failed to create cassette entry: #{reason}")
+        raise "Cassette entry creation failed: #{reason}"
+    end
 
     # Return the response
     conn
@@ -95,16 +105,6 @@ defmodule ReqVCR.Record do
     else
       "-"
     end
-  end
-
-  defp append_to_cassette(path, entry) do
-    # Ensure directory exists
-    path
-    |> Path.dirname()
-    |> File.mkdir_p!()
-
-    # Append entry
-    File.write!(path, Jason.encode!(entry) <> "\n", [:append])
   end
 
   defp put_headers(conn, headers) do

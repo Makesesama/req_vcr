@@ -225,7 +225,7 @@ defmodule ReqVCR do
 
   require Logger
 
-  alias ReqVCR.{Record, Replay}
+  alias ReqVCR.{Cassette, CassetteEntry, Record, Replay}
 
   @cassette_dir "test/support/cassettes"
   @auth_params ~w[token apikey api_key]
@@ -376,8 +376,7 @@ defmodule ReqVCR do
     # Install a catch-all stub that handles all requests
     Req.Test.stub(name, fn conn ->
       # Reload entries on each request for :all mode to see newly recorded entries
-      entries =
-        if mode == :all, do: load_cassette(cassette_path), else: load_cassette(cassette_path)
+      entries = Cassette.load(cassette_path)
 
       handle_request(conn, name, cassette_path, entries, mode, match_on)
     end)
@@ -465,28 +464,28 @@ defmodule ReqVCR do
   end
 
   # Apply a specific matcher
-  defp apply_matcher(:method, conn, entry) do
+  defp apply_matcher(:method, conn, %CassetteEntry{req: req}) do
     method = conn.method |> to_string() |> String.upcase()
-    method == get_in(entry, ["req", "method"])
+    method == req.method
   end
 
-  defp apply_matcher(:uri, conn, entry) do
+  defp apply_matcher(:uri, conn, %CassetteEntry{req: req}) do
     url = build_url(conn)
     normalized_url = normalize_url(url)
-    normalized_url == normalize_url(get_in(entry, ["req", "url"]) || "")
+    normalized_url == normalize_url(req.url)
   end
 
-  defp apply_matcher(:host, conn, entry) do
-    conn.host == (URI.parse(get_in(entry, ["req", "url"]) || "").host || "")
+  defp apply_matcher(:host, conn, %CassetteEntry{req: req}) do
+    conn.host == (URI.parse(req.url).host || "")
   end
 
-  defp apply_matcher(:path, conn, entry) do
-    conn.request_path == (URI.parse(get_in(entry, ["req", "url"]) || "").path || "")
+  defp apply_matcher(:path, conn, %CassetteEntry{req: req}) do
+    conn.request_path == (URI.parse(req.url).path || "")
   end
 
-  defp apply_matcher(:headers, conn, entry) do
+  defp apply_matcher(:headers, conn, %CassetteEntry{req: req}) do
     req_headers = conn.req_headers |> Enum.into(%{})
-    entry_headers = get_in(entry, ["req", "headers"]) || %{}
+    entry_headers = req.headers
 
     # Normalize both sets of headers
     normalized_req = normalize_headers(req_headers)
@@ -499,9 +498,9 @@ defmodule ReqVCR do
     end)
   end
 
-  defp apply_matcher(:body, conn, entry) do
+  defp apply_matcher(:body, conn, %CassetteEntry{req: req}) do
     body = Req.Test.raw_body(conn)
-    entry_body_hash = get_in(entry, ["req", "body_hash"])
+    entry_body_hash = req.body_hash
 
     # Compare body hash
     method = conn.method |> to_string() |> String.upcase()
@@ -574,18 +573,5 @@ defmodule ReqVCR do
 
   defp cassette_path(name) do
     Path.join([@cassette_dir, "#{name}.jsonl"])
-  end
-
-  defp load_cassette(path) do
-    if File.exists?(path) do
-      path
-      |> File.stream!()
-      |> Stream.map(&String.trim/1)
-      |> Stream.reject(&(&1 == ""))
-      |> Stream.map(&Jason.decode!/1)
-      |> Enum.to_list()
-    else
-      []
-    end
   end
 end

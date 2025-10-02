@@ -640,9 +640,9 @@ defmodule ReqVCRTest do
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
       # Register custom matcher for API version
-      ReqVCR.register_matcher(:api_version, fn conn, entry ->
+      ReqVCR.register_matcher(:api_version, fn conn, %ReqVCR.CassetteEntry{req: req} ->
         version = Plug.Conn.get_req_header(conn, "x-version") |> List.first()
-        version == get_in(entry, ["req", "headers", "x-version"])
+        version == Map.get(req.headers, "x-version")
       end)
 
       ReqVCR.install!(
