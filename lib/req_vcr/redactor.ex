@@ -23,8 +23,7 @@ defmodule ReqVCR.Redactor do
   - Long alphanumeric strings that look like secrets
   """
 
-  @default_auth_params ~w[token apikey api_key access_token refresh_token jwt bearer password secret]
-  @default_auth_headers ~w[authorization auth x-api-key x-auth-token x-access-token cookie]
+  alias ReqVCR.Config
 
   @doc """
   Redacts sensitive information from request headers.
@@ -68,7 +67,7 @@ defmodule ReqVCR.Redactor do
         uri.query
         |> URI.decode_query()
         |> Enum.map(fn {key, value} ->
-          if String.downcase(key) in @default_auth_params do
+          if String.downcase(key) in Config.auth_params() do
             {key, "<REDACTED>"}
           else
             # Apply configured filters to query parameter values
@@ -133,7 +132,7 @@ defmodule ReqVCR.Redactor do
     |> Enum.map(fn {key, value} ->
       key_lower = String.downcase(to_string(key))
 
-      if key_lower in @default_auth_params or
+      if key_lower in Config.auth_params() or
            String.contains?(key_lower, ["token", "key", "secret", "password"]) do
         {key, "<REDACTED>"}
       else
@@ -169,7 +168,7 @@ defmodule ReqVCR.Redactor do
 
   # Redact individual header values based on built-in patterns
   defp redact_header_value({key, value}) do
-    if String.downcase(key) in @default_auth_headers do
+    if String.downcase(key) in Config.auth_headers() do
       {key, "<REDACTED>"}
     else
       {key, value}
@@ -190,7 +189,7 @@ defmodule ReqVCR.Redactor do
 
   # Get configured filters from application config
   defp configured_filters do
-    Application.get_env(:req_vcr, :filters, [])
+    Config.custom_filters()
   end
 
   # Apply configured filters to a single value

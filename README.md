@@ -282,6 +282,59 @@ end
 
 ## Advanced Configuration
 
+### Configurable Settings
+
+ReqVCR provides several configuration options to customize its behavior:
+
+```elixir
+# config/config.exs
+config :req_vcr,
+  # Cassette storage directory
+  cassette_dir: "test/support/cassettes",
+
+  # JSON library for encoding/decoding cassettes
+  json_library: ReqVCR.JSON.Jason,
+
+  # Default record mode
+  default_mode: :once,
+
+  # Auth parameters to redact from URLs
+  auth_params: ~w[token apikey api_key access_token refresh_token jwt bearer password secret],
+
+  # Auth headers to redact
+  auth_headers: ~w[authorization auth x-api-key x-auth-token x-access-token cookie],
+
+  # Volatile headers to remove from responses
+  volatile_headers: ~w[date server set-cookie request-id x-request-id x-amzn-trace-id],
+
+  # Custom redaction filters
+  filters: [
+    {"<API_KEY>", fn -> System.get_env("API_KEY") end},
+    {"<SHOPIFY_TOKEN>", fn -> Application.get_env(:my_app, :shopify_token) end}
+  ]
+```
+
+### Custom Cassette Directory
+
+Store cassettes in a different location:
+
+```elixir
+# config/test.exs
+config :req_vcr, cassette_dir: "test/vcr_cassettes"
+```
+
+### Custom Redaction Lists
+
+Add your own auth parameters and headers to redact:
+
+```elixir
+# config/config.exs
+config :req_vcr,
+  auth_params: ~w[token apikey api_key my_custom_token],
+  auth_headers: ~w[authorization x-api-key x-my-custom-auth],
+  volatile_headers: ~w[date server x-trace-id x-my-volatile-header]
+```
+
 ### Custom JSON Library
 
 By default, ReqVCR uses Jason for JSON encoding/decoding. You can configure a different JSON library to:

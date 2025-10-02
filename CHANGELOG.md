@@ -23,6 +23,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `ReqVCR.TestHelpers.with_module_and_config/6` combining both patterns
 - **Development tools** - Mix task for code quality enforcement
   - `mix precommit` alias running format, credo, dialyzer, and tests
+- **Configurable settings** - Made hard-coded values configurable for flexibility
+  - `ReqVCR.Config` module for centralized configuration management
+  - Configurable cassette directory: `config :req_vcr, :cassette_dir, "custom/path"`
+  - Configurable auth parameters: `config :req_vcr, :auth_params, ~w[token my_token]`
+  - Configurable auth headers: `config :req_vcr, :auth_headers, ~w[authorization x-my-auth]`
+  - Configurable volatile headers: `config :req_vcr, :volatile_headers, ~w[date x-trace-id]`
+  - Configuration validation with helpful error messages
+  - Comprehensive test coverage for all configuration options
 
 ### Changed
 - **Improved error handling** throughout the codebase
@@ -41,6 +49,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Error handling security** - Prevented silent failures that could mask issues
 - **Test reliability** - Fixed cassette cleanup logic to preserve fixture directories
 - **Code quality** - Resolved Credo warnings for negated conditions and formatting
+- **Hard-coded values** - Eliminated hard-coded cassette directory, auth parameters, and volatile headers
+  - All previously hard-coded values are now configurable via application config
+  - Maintains backward compatibility with sensible defaults
 
 ## [0.1.0] - 2025-10-02
 

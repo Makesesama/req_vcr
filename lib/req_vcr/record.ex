@@ -3,9 +3,7 @@ defmodule ReqVCR.Record do
   Handles recording HTTP requests to cassettes.
   """
 
-  alias ReqVCR.{Cassette, CassetteEntry, Redactor}
-
-  @volatile_headers ~w[date server set-cookie request-id x-request-id x-amzn-trace-id]
+  alias ReqVCR.{Cassette, CassetteEntry, Redactor, Config}
 
   @doc """
   Records a live HTTP request to a cassette.
@@ -79,7 +77,7 @@ defmodule ReqVCR.Record do
     # Filter out volatile headers and convert to string values
     headers =
       response.headers
-      |> Enum.reject(fn {key, _} -> String.downcase(key) in @volatile_headers end)
+      |> Enum.reject(fn {key, _} -> String.downcase(key) in Config.volatile_headers() end)
       |> Enum.map(fn {key, value} ->
         # Convert list values to comma-separated string
         string_value =

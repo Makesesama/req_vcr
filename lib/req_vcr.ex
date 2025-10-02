@@ -225,10 +225,7 @@ defmodule ReqVCR do
 
   require Logger
 
-  alias ReqVCR.{Cassette, CassetteEntry, Record, Replay}
-
-  @cassette_dir "test/support/cassettes"
-  @auth_params ~w[token apikey api_key]
+  alias ReqVCR.{Cassette, CassetteEntry, Record, Replay, Config}
 
   @type mode :: :once | :new_episodes | :all | :none
   @type matcher :: :method | :uri | :host | :path | :headers | :body | atom()
@@ -547,7 +544,7 @@ defmodule ReqVCR do
         filtered =
           uri.query
           |> URI.decode_query()
-          |> Enum.reject(fn {key, _} -> String.downcase(key) in @auth_params end)
+          |> Enum.reject(fn {key, _} -> String.downcase(key) in Config.auth_params() end)
           |> Enum.sort()
 
         # If all params were filtered out, set to nil to remove the ? from URL
@@ -572,6 +569,6 @@ defmodule ReqVCR do
   end
 
   defp cassette_path(name) do
-    Path.join([@cassette_dir, "#{name}.jsonl"])
+    Config.cassette_path(name)
   end
 end
