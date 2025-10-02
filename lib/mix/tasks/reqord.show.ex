@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.ReqVcr.Show do
+defmodule Mix.Tasks.Reqord.Show do
   @moduledoc """
   Display cassette contents in a readable format.
 
@@ -7,22 +7,22 @@ defmodule Mix.Tasks.ReqVcr.Show do
   ## Usage
 
       # Show all entries in a cassette
-      mix req_vcr.show my_test.jsonl
+      mix reqord.show my_test.jsonl
 
       # Show entries matching a URL pattern
-      mix req_vcr.show my_test.jsonl --grep "/users"
+      mix reqord.show my_test.jsonl --grep "/users"
 
       # Show entries for a specific HTTP method
-      mix req_vcr.show my_test.jsonl --method GET
+      mix reqord.show my_test.jsonl --method GET
 
       # Show only request details
-      mix req_vcr.show my_test.jsonl --request-only
+      mix reqord.show my_test.jsonl --request-only
 
       # Show only response details
-      mix req_vcr.show my_test.jsonl --response-only
+      mix reqord.show my_test.jsonl --response-only
 
       # Show raw JSON
-      mix req_vcr.show my_test.jsonl --raw
+      mix reqord.show my_test.jsonl --raw
 
   ## Options
 
@@ -61,11 +61,11 @@ defmodule Mix.Tasks.ReqVcr.Show do
         show_cassette(cassette_name, opts)
 
       [] ->
-        Mix.Shell.IO.error("Usage: mix req_vcr.show <cassette>")
+        Mix.Shell.IO.error("Usage: mix reqord.show <cassette>")
         exit({:shutdown, 1})
 
       _ ->
-        Mix.Shell.IO.error("Too many arguments. Usage: mix req_vcr.show <cassette>")
+        Mix.Shell.IO.error("Too many arguments. Usage: mix reqord.show <cassette>")
         exit({:shutdown, 1})
     end
   end
@@ -109,7 +109,7 @@ defmodule Mix.Tasks.ReqVcr.Show do
     |> File.stream!()
     |> Stream.map(&String.trim/1)
     |> Stream.reject(&(&1 == ""))
-    |> Stream.map(&ReqVCR.JSON.decode!/1)
+    |> Stream.map(&Reqord.JSON.decode!/1)
     |> Enum.to_list()
   rescue
     e ->
@@ -145,7 +145,7 @@ defmodule Mix.Tasks.ReqVcr.Show do
 
   defp show_raw(entries) do
     Enum.each(entries, fn entry ->
-      Mix.Shell.IO.info(ReqVCR.JSON.encode!(entry))
+      Mix.Shell.IO.info(Reqord.JSON.encode!(entry))
       Mix.Shell.IO.info("")
     end)
   end
@@ -223,7 +223,7 @@ defmodule Mix.Tasks.ReqVcr.Show do
     cond do
       opts[:decode_body] && json_content_type?(headers) ->
         try do
-          body |> ReqVCR.JSON.decode!() |> ReqVCR.JSON.encode!()
+          body |> Reqord.JSON.decode!() |> Reqord.JSON.encode!()
         rescue
           _ -> truncate_body(body)
         end

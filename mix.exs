@@ -1,12 +1,12 @@
-defmodule ReqVCR.MixProject do
+defmodule Reqord.MixProject do
   use Mix.Project
 
   @version "0.2.0"
-  @source_url "https://github.com/Makesesama/req_vcr"
+  @source_url "https://github.com/Makesesama/reqord"
 
   def project do
     [
-      app: :req_vcr,
+      app: :reqord,
       version: @version,
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
@@ -57,7 +57,7 @@ defmodule ReqVCR.MixProject do
 
   defp package do
     [
-      name: "req_vcr",
+      name: "reqord",
       files: ~w[lib .formatter.exs mix.exs README.md CHANGELOG.md LICENSE],
       licenses: ["Apache-2.0"],
       links: %{

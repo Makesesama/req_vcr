@@ -1,9 +1,9 @@
 # TestApi
 
-A simple test API server for testing ReqVCR.
+A simple test API server for testing Reqord.
 
 This application provides a few basic API routes with fake authentication to demonstrate
-and test ReqVCR's recording and replay functionality.
+and test Reqord's recording and replay functionality.
 
 ## Routes
 
@@ -24,7 +24,7 @@ Authorization: Bearer test-token
 The easiest way to record cassettes is using the provided script:
 
 ```bash
-# From the req_vcr root directory
+# From the reqord root directory
 ./scripts/record_cassettes.sh
 ```
 
@@ -68,11 +68,11 @@ curl -X POST http://localhost:4001/api/users \
   -d '{"name":"Charlie","email":"charlie@example.com"}'
 ```
 
-## Recording Cassettes with ReqVCR
+## Recording Cassettes with Reqord
 
 ### Using the Script (Recommended)
 
-From the parent `req_vcr` directory:
+From the parent `reqord` directory:
 
 ```bash
 ./scripts/record_cassettes.sh
@@ -80,14 +80,14 @@ From the parent `req_vcr` directory:
 
 ### Manual Recording
 
-From the parent `req_vcr` directory:
+From the parent `reqord` directory:
 
 ```bash
 # 1. Start the test API
 cd test_api && mix run --no-halt &
 
 # 2. Record cassettes
-cd .. && REQ_VCR=all mix test test/example_api_test.exs
+cd .. && REQORD=all mix test test/example_api_test.exs
 
 # 3. Replay from cassettes (no network)
 mix test test/example_api_test.exs

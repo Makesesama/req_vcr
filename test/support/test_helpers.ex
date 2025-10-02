@@ -1,6 +1,6 @@
-defmodule ReqVCR.TestHelpers do
+defmodule Reqord.TestHelpers do
   @moduledoc """
-  Shared test utilities for ReqVCR tests.
+  Shared test utilities for Reqord tests.
   """
 
   @doc """
@@ -37,9 +37,9 @@ defmodule ReqVCR.TestHelpers do
   ## Examples
 
       test "with custom config" do
-        with_config(:req_vcr, :json_library, MyAdapter, fn ->
+        with_config(:reqord, :json_library, MyAdapter, fn ->
           # test code with MyAdapter configured
-          assert ReqVCR.JSON.encode!(%{}) == "{}"
+          assert Reqord.JSON.encode!(%{}) == "{}"
         end)
       end
   """
@@ -68,9 +68,9 @@ defmodule ReqVCR.TestHelpers do
   ## Examples
 
       test "poison with config" do
-        with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+        with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
           # test code here
-          assert ReqVCR.JSON.encode!(%{test: true}) |> String.contains?("test")
+          assert Reqord.JSON.encode!(%{test: true}) |> String.contains?("test")
         end)
       end
   """

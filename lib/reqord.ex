@@ -1,18 +1,18 @@
-defmodule ReqVCR do
+defmodule Reqord do
   @moduledoc """
   VCR-style record/replay for HTTP when using `Req`, integrating with `Req.Test`.
 
-  ReqVCR allows you to record HTTP interactions to cassette files and replay them
+  Reqord allows you to record HTTP interactions to cassette files and replay them
   in your tests without requiring any application code changes.
 
   ## Installation
 
-  Add `req_vcr` to your list of dependencies in `mix.exs`:
+  Add `reqord` to your list of dependencies in `mix.exs`:
 
       def deps do
         [
           {:req, "~> 0.5"},
-          {:req_vcr, "~> 0.1.0"}
+          {:reqord, "~> 0.1.0"}
         ]
       end
 
@@ -25,10 +25,10 @@ defmodule ReqVCR do
       config :my_app,
         req_options: [plug: {Req.Test, MyApp.ReqStub}]
 
-  ### 2. Use ReqVCR.Case in your tests
+  ### 2. Use Reqord.Case in your tests
 
       defmodule MyApp.APITest do
-        use ReqVCR.Case
+        use Reqord.Case
 
         # Specify your Req.Test stub name
         defp default_stub_name, do: MyApp.ReqStub
@@ -45,14 +45,14 @@ defmodule ReqVCR do
   ### 3. Record cassettes on first run
 
       # Record mode - hits live API and saves responses
-      REQ_VCR=record API_TOKEN=xxx mix test
+      REQORD=record API_TOKEN=xxx mix test
 
       # Subsequent runs use replay mode (default) - no network calls
       mix test
 
   ## Modes
 
-  Control the VCR mode via the `REQ_VCR` environment variable:
+  Control the VCR mode via the `REQORD` environment variable:
 
   - `:replay` (default) - Only replay from cassettes, raise on misses
   - `:record` - Always forward to live network and record
@@ -60,10 +60,10 @@ defmodule ReqVCR do
 
   ## Examples
 
-  ### Basic Usage with ReqVCR.Case
+  ### Basic Usage with Reqord.Case
 
       defmodule MyApp.WeatherAPITest do
-        use ReqVCR.Case
+        use Reqord.Case
 
         defp default_stub_name, do: MyApp.ReqStub
 
@@ -88,7 +88,7 @@ defmodule ReqVCR do
 
   ### Manual Installation
 
-  For more control, you can install ReqVCR manually:
+  For more control, you can install Reqord manually:
 
       defmodule MyApp.CustomTest do
         use ExUnit.Case
@@ -97,7 +97,7 @@ defmodule ReqVCR do
           Req.Test.set_req_test_to_private()
           Req.Test.set_req_test_from_context(%{async: true})
 
-          ReqVCR.install!(
+          Reqord.install!(
             name: MyApp.ReqStub,
             cassette: "my_custom_cassette",
             mode: :replay
@@ -125,7 +125,7 @@ defmodule ReqVCR do
         end)
 
         # Allow the task's process to use the stub
-        ReqVCR.allow(MyApp.ReqStub, self(), task.pid)
+        Reqord.allow(MyApp.ReqStub, self(), task.pid)
 
         {:ok, response} = Task.await(task)
         assert response.status == 200
@@ -133,7 +133,7 @@ defmodule ReqVCR do
 
   ### POST/PUT/PATCH Requests
 
-  ReqVCR distinguishes requests with different bodies:
+  Reqord distinguishes requests with different bodies:
 
       test "creates users" do
         client = Req.new(plug: {Req.Test, MyApp.ReqStub})
@@ -157,7 +157,7 @@ defmodule ReqVCR do
 
   ### Request Matching
 
-  ReqVCR matches requests using a deterministic key:
+  Reqord matches requests using a deterministic key:
 
       METHOD NORMALIZED_URL BODY_HASH
 
@@ -187,9 +187,9 @@ defmodule ReqVCR do
 
   ## Workflow
 
-      # 1. Write tests using ReqVCR.Case
+      # 1. Write tests using Reqord.Case
       # 2. Record cassettes (hits live API)
-      REQ_VCR=record API_TOKEN=xxx mix test
+      REQORD=record API_TOKEN=xxx mix test
 
       # 3. Commit cassettes to git
       git add test/support/cassettes/
@@ -199,11 +199,11 @@ defmodule ReqVCR do
       mix test
 
       # 5. Update cassettes when API changes
-      REQ_VCR=record API_TOKEN=xxx mix test
+      REQORD=record API_TOKEN=xxx mix test
 
   ## Integration with Req.Test
 
-  ReqVCR works alongside your existing `Req.Test` stubs:
+  Reqord works alongside your existing `Req.Test` stubs:
 
       test "with mixed stubs" do
         # Add a high-priority stub for specific URL
@@ -225,14 +225,14 @@ defmodule ReqVCR do
 
   require Logger
 
-  alias ReqVCR.{Cassette, CassetteEntry, Record, Replay, Config}
+  alias Reqord.{Cassette, CassetteEntry, Record, Replay, Config}
 
   @type mode :: :once | :new_episodes | :all | :none
   @type matcher :: :method | :uri | :host | :path | :headers | :body | atom()
   @type matcher_fun :: (Plug.Conn.t(), map() -> boolean())
 
   # Custom matcher registry
-  @custom_matchers :req_vcr_custom_matchers
+  @custom_matchers :reqord_custom_matchers
 
   @doc """
   Registers a custom matcher function.
@@ -243,13 +243,13 @@ defmodule ReqVCR do
   ## Examples
 
       # Register a custom matcher that checks request ID header
-      ReqVCR.register_matcher(:request_id, fn conn, entry ->
+      Reqord.register_matcher(:request_id, fn conn, entry ->
         req_id = Plug.Conn.get_req_header(conn, "x-request-id") |> List.first()
         req_id == get_in(entry, ["req", "headers", "x-request-id"])
       end)
 
       # Use the custom matcher
-      ReqVCR.install!(
+      Reqord.install!(
         name: MyApp.ReqStub,
         cassette: "my_test",
         match_on: [:method, :uri, :request_id]
@@ -287,10 +287,10 @@ defmodule ReqVCR do
         Cassette:  #{cassette}
 
       To record this request, run:
-        REQ_VCR=record mix test --include vcr
+        REQORD=record mix test --include vcr
 
       Or use auto mode to record on misses:
-        REQ_VCR=auto mix test
+        REQORD=auto mix test
       """
     end
   end
@@ -307,7 +307,7 @@ defmodule ReqVCR do
 
   ## Record Modes
 
-  ReqVCR supports Ruby VCR-style record modes:
+  Reqord supports Ruby VCR-style record modes:
 
   - `:once` - Use existing cassette, raise on new requests (strict replay, default)
   - `:new_episodes` - Use existing cassette, record new requests (append mode)
@@ -329,33 +329,33 @@ defmodule ReqVCR do
   ## Examples
 
       # Default matching (method + uri)
-      ReqVCR.install!(
+      Reqord.install!(
         name: MyApp.ReqStub,
         cassette: "my_test",
         mode: :once
       )
 
       # Match on method, path, and body (useful for APIs with changing query params)
-      ReqVCR.install!(
+      Reqord.install!(
         name: MyApp.ReqStub,
         cassette: "my_test",
         match_on: [:method, :path, :body]
       )
 
       # Match only on method and host (ignores path and query)
-      ReqVCR.install!(
+      Reqord.install!(
         name: MyApp.ReqStub,
         cassette: "my_test",
         match_on: [:method, :host]
       )
 
       # Use custom matcher
-      ReqVCR.register_matcher(:api_version, fn conn, entry ->
+      Reqord.register_matcher(:api_version, fn conn, entry ->
         Plug.Conn.get_req_header(conn, "x-api-version") ==
           [get_in(entry, ["req", "headers", "x-api-version"])]
       end)
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: MyApp.ReqStub,
         cassette: "my_test",
         match_on: [:method, :uri, :api_version]
@@ -388,7 +388,7 @@ defmodule ReqVCR do
 
       test "with spawned process" do
         task = Task.async(fn ->
-          ReqVCR.allow(MyApp.ReqStub, self(), Task.async(fn -> ... end).pid)
+          Reqord.allow(MyApp.ReqStub, self(), Task.async(fn -> ... end).pid)
           # spawned process can now make requests
         end)
         Task.await(task)

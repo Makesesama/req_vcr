@@ -1,9 +1,9 @@
-defmodule ReqVCR.Record do
+defmodule Reqord.Record do
   @moduledoc """
   Handles recording HTTP requests to cassettes.
   """
 
-  alias ReqVCR.{Cassette, CassetteEntry, Redactor, Config}
+  alias Reqord.{Cassette, CassetteEntry, Redactor, Config}
 
   @doc """
   Records a live HTTP request to a cassette.

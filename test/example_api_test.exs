@@ -1,8 +1,8 @@
-defmodule ReqVCR.ExampleAPITest do
+defmodule Reqord.ExampleAPITest do
   @moduledoc """
-  Example tests using ReqVCR with a local test API.
+  Example tests using Reqord with a local test API.
 
-  These tests demonstrate ReqVCR's recording and replay functionality.
+  These tests demonstrate Reqord's recording and replay functionality.
 
   ## Setup
 
@@ -12,23 +12,23 @@ defmodule ReqVCR.ExampleAPITest do
 
   Then record cassettes:
 
-      REQ_VCR=all mix test test/example_api_test.exs
+      REQORD=all mix test test/example_api_test.exs
 
   Finally, run tests in replay mode (no network calls):
 
       mix test test/example_api_test.exs
   """
 
-  use ReqVCR.Case
+  use Reqord.Case
 
   @moduletag :example_api
 
-  defp default_stub_name, do: ReqVCR.ExampleAPIStub
+  defp default_stub_name, do: Reqord.ExampleAPIStub
 
   test "fetches list of users with authentication" do
     client =
       Req.new(
-        plug: {Req.Test, ReqVCR.ExampleAPIStub},
+        plug: {Req.Test, Reqord.ExampleAPIStub},
         headers: [{"authorization", "Bearer test-token"}]
       )
 
@@ -47,7 +47,7 @@ defmodule ReqVCR.ExampleAPITest do
   test "fetches a single user" do
     client =
       Req.new(
-        plug: {Req.Test, ReqVCR.ExampleAPIStub},
+        plug: {Req.Test, Reqord.ExampleAPIStub},
         headers: [{"authorization", "Bearer test-token"}]
       )
 
@@ -62,7 +62,7 @@ defmodule ReqVCR.ExampleAPITest do
   test "creates a new user" do
     client =
       Req.new(
-        plug: {Req.Test, ReqVCR.ExampleAPIStub},
+        plug: {Req.Test, Reqord.ExampleAPIStub},
         headers: [{"authorization", "Bearer test-token"}]
       )
 
@@ -79,7 +79,7 @@ defmodule ReqVCR.ExampleAPITest do
   end
 
   test "returns 401 without authentication" do
-    client = Req.new(plug: {Req.Test, ReqVCR.ExampleAPIStub})
+    client = Req.new(plug: {Req.Test, Reqord.ExampleAPIStub})
 
     {:ok, response} = Req.get(client, url: "http://localhost:4001/api/users")
 

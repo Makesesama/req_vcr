@@ -32,7 +32,7 @@ rm -rf test/support/cassettes/ExampleAPI/
 
 # Record cassettes
 echo "Recording cassettes..."
-REQ_VCR=all mix test test/example_api_test.exs
+REQORD=all mix test test/example_api_test.exs
 
 # Stop the API server
 echo "Stopping API server..."

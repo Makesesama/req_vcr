@@ -1,7 +1,7 @@
-defmodule ReqVCR.RedactorTest do
+defmodule Reqord.RedactorTest do
   use ExUnit.Case
 
-  alias ReqVCR.Redactor
+  alias Reqord.Redactor
 
   describe "redact_headers/1" do
     test "redacts authorization headers" do

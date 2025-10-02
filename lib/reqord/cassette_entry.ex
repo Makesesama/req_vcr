@@ -1,4 +1,4 @@
-defmodule ReqVCR.CassetteEntry do
+defmodule Reqord.CassetteEntry do
   @moduledoc """
   Represents a single cassette entry with request and response data.
 
@@ -23,7 +23,7 @@ defmodule ReqVCR.CassetteEntry do
     @type t :: %__MODULE__{
             method: String.t(),
             url: String.t(),
-            headers: ReqVCR.CassetteEntry.headers(),
+            headers: Reqord.CassetteEntry.headers(),
             body_hash: String.t()
           }
 
@@ -74,7 +74,7 @@ defmodule ReqVCR.CassetteEntry do
 
     @type t :: %__MODULE__{
             status: pos_integer(),
-            headers: ReqVCR.CassetteEntry.headers(),
+            headers: Reqord.CassetteEntry.headers(),
             body_b64: String.t()
           }
 
@@ -129,10 +129,10 @@ defmodule ReqVCR.CassetteEntry do
 
   ## Examples
 
-      iex> {:ok, req} = ReqVCR.CassetteEntry.Request.new("GET", "https://api.example.com", %{}, "-")
-      iex> {:ok, resp} = ReqVCR.CassetteEntry.Response.new(200, %{}, "dGVzdA==")
-      iex> ReqVCR.CassetteEntry.new(req, resp)
-      {:ok, %ReqVCR.CassetteEntry{...}}
+      iex> {:ok, req} = Reqord.CassetteEntry.Request.new("GET", "https://api.example.com", %{}, "-")
+      iex> {:ok, resp} = Reqord.CassetteEntry.Response.new(200, %{}, "dGVzdA==")
+      iex> Reqord.CassetteEntry.new(req, resp)
+      {:ok, %Reqord.CassetteEntry{...}}
   """
   @spec new(Request.t(), Response.t()) :: {:ok, t()} | {:error, String.t()}
   def new(%Request{} = req, %Response{} = resp) do

@@ -1,4 +1,4 @@
-defmodule ReqVCR.JSONLTest do
+defmodule Reqord.JSONLTest do
   use ExUnit.Case
 
   @cassette_dir "test/support/cassettes"

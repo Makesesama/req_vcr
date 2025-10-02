@@ -1,4 +1,4 @@
-defmodule ReqVCR.Cassette do
+defmodule Reqord.Cassette do
   @moduledoc """
   Handles cassette file operations including loading, saving, and validation.
 
@@ -8,7 +8,7 @@ defmodule ReqVCR.Cassette do
 
   require Logger
 
-  alias ReqVCR.CassetteEntry
+  alias Reqord.CassetteEntry
 
   @type cassette_path :: String.t()
 
@@ -20,10 +20,10 @@ defmodule ReqVCR.Cassette do
 
   ## Examples
 
-      iex> ReqVCR.Cassette.load("test/cassettes/example.jsonl")
+      iex> Reqord.Cassette.load("test/cassettes/example.jsonl")
       [%{"req" => %{...}, "resp" => %{...}}]
 
-      iex> ReqVCR.Cassette.load("nonexistent.jsonl")
+      iex> Reqord.Cassette.load("nonexistent.jsonl")
       []
   """
   @spec load(cassette_path()) :: [CassetteEntry.t()]
@@ -49,7 +49,7 @@ defmodule ReqVCR.Cassette do
 
   ## Examples
 
-      ReqVCR.Cassette.append("test/cassettes/example.jsonl", entry)
+      Reqord.Cassette.append("test/cassettes/example.jsonl", entry)
   """
   @spec append(cassette_path(), CassetteEntry.t()) :: :ok
   def append(path, entry) do
@@ -60,7 +60,7 @@ defmodule ReqVCR.Cassette do
 
     # Convert struct to map and encode
     entry_map = CassetteEntry.to_map(entry)
-    encoded_entry = ReqVCR.JSON.encode!(entry_map)
+    encoded_entry = Reqord.JSON.encode!(entry_map)
     File.write!(path, encoded_entry <> "\n", [:append])
     :ok
   end
@@ -87,7 +87,7 @@ defmodule ReqVCR.Cassette do
 
   # Decode a single line with error handling and line number context
   defp decode_line({line, line_number}) do
-    case ReqVCR.JSON.decode(line) do
+    case Reqord.JSON.decode(line) do
       {:ok, raw_entry} ->
         case validate_entry(raw_entry) do
           {:ok, cassette_entry} ->

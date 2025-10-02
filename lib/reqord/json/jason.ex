@@ -1,8 +1,8 @@
-defmodule ReqVCR.JSON.Jason do
+defmodule Reqord.JSON.Jason do
   @moduledoc """
   JSON adapter for the Jason library.
 
-  This is the default JSON adapter used by ReqVCR. It provides encoding and
+  This is the default JSON adapter used by Reqord. It provides encoding and
   decoding functionality using the Jason library.
 
   ## Features
@@ -15,24 +15,24 @@ defmodule ReqVCR.JSON.Jason do
 
   This adapter is used by default. To explicitly configure it:
 
-      config :req_vcr, :json_library, ReqVCR.JSON.Jason
+      config :reqord, :json_library, Reqord.JSON.Jason
   """
 
-  @behaviour ReqVCR.JSON
+  @behaviour Reqord.JSON
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def encode!(data) do
     ensure_jason_available!()
     Jason.encode!(data)
   end
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def decode(binary) do
     ensure_jason_available!()
     Jason.decode(binary)
   end
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def decode!(binary) do
     ensure_jason_available!()
     Jason.decode!(binary)
@@ -55,7 +55,7 @@ defmodule ReqVCR.JSON.Jason do
 
       Alternatively, configure a different JSON adapter:
 
-          config :req_vcr, :json_library, MyApp.JSONAdapter
+          config :reqord, :json_library, MyApp.JSONAdapter
       """
     end
   end

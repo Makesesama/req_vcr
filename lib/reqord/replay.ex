@@ -1,9 +1,9 @@
-defmodule ReqVCR.Replay do
+defmodule Reqord.Replay do
   @moduledoc """
   Handles replaying HTTP requests from cassettes.
   """
 
-  alias ReqVCR.CassetteEntry
+  alias Reqord.CassetteEntry
 
   @doc """
   Replays a response from a cassette entry.

@@ -1,7 +1,7 @@
-defmodule ReqVCR.ErrorHandlingTest do
+defmodule Reqord.ErrorHandlingTest do
   use ExUnit.Case
 
-  @test_stub ReqVCR.ErrorHandlingTest.Stub
+  @test_stub Reqord.ErrorHandlingTest.Stub
   @cassette_dir "test/support/cassettes"
 
   setup do
@@ -44,7 +44,7 @@ defmodule ReqVCR.ErrorHandlingTest do
       File.write!(cassette_path, "{ this is not valid json }\n")
 
       # Should not crash when loading cassette
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "invalid_json",
         mode: :once
@@ -53,7 +53,7 @@ defmodule ReqVCR.ErrorHandlingTest do
       client = Req.new(plug: {Req.Test, @test_stub})
 
       # Should raise cassette miss (because invalid entries are ignored)
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/test")
       end
     end
@@ -74,7 +74,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       File.write!(cassette_path, Enum.join(malformed_entries, ""))
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "malformed_entries",
         mode: :once
@@ -87,11 +87,11 @@ defmodule ReqVCR.ErrorHandlingTest do
       assert response.body == "valid"
 
       # Malformed entries should be ignored, so these should raise
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/1")
       end
 
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/2")
       end
     end
@@ -109,7 +109,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       File.write!(cassette_path, content)
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "mixed_valid_invalid",
         mode: :once
@@ -131,7 +131,7 @@ defmodule ReqVCR.ErrorHandlingTest do
       cassette_path = Path.join(@cassette_dir, "empty_file.jsonl")
       File.write!(cassette_path, "")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "empty_file",
         mode: :once
@@ -140,7 +140,7 @@ defmodule ReqVCR.ErrorHandlingTest do
       client = Req.new(plug: {Req.Test, @test_stub})
 
       # Should behave same as missing cassette
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/test")
       end
     end
@@ -156,7 +156,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       File.write!(cassette_path, content)
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "partial_json",
         mode: :once
@@ -169,7 +169,7 @@ defmodule ReqVCR.ErrorHandlingTest do
       assert response.body == "complete"
 
       # Truncated entry should be ignored
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/truncated")
       end
     end
@@ -179,7 +179,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       # Test various unicode scenarios
       unicode_body =
-        ReqVCR.JSON.encode!(%{
+        Reqord.JSON.encode!(%{
           "emoji" => "🚀🌟",
           "chinese" => "你好世界",
           "arabic" => "مرحبا بالعالم",
@@ -202,7 +202,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "unicode_issues",
         mode: :once
@@ -225,16 +225,16 @@ defmodule ReqVCR.ErrorHandlingTest do
       invalid_json = "{ this is not valid json }"
 
       # Should not crash, should return original string
-      result = ReqVCR.Redactor.redact_response_body(invalid_json)
+      result = Reqord.Redactor.redact_response_body(invalid_json)
       assert result == invalid_json
     end
 
     test "redactor handles non-string input" do
       # Should handle non-binary input gracefully
-      result = ReqVCR.Redactor.redact_response_body(nil)
+      result = Reqord.Redactor.redact_response_body(nil)
       assert result == nil
 
-      result = ReqVCR.Redactor.redact_response_body(123)
+      result = Reqord.Redactor.redact_response_body(123)
       assert result == 123
     end
 
@@ -244,7 +244,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       # Normal case should work
       valid_json = ~s({"token": "secret123", "data": "normal"})
-      result = ReqVCR.Redactor.redact_response_body(valid_json)
+      result = Reqord.Redactor.redact_response_body(valid_json)
 
       # Should redact the token
       assert String.contains?(result, "<REDACTED>")
@@ -261,7 +261,7 @@ defmodule ReqVCR.ErrorHandlingTest do
 
       # In :new_episodes mode, if we try to record a non-existent request,
       # it should attempt to make a real network call and potentially fail
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "network_error_test",
         mode: :new_episodes
@@ -294,7 +294,7 @@ defmodule ReqVCR.ErrorHandlingTest do
             File.rmdir(readonly_dir)
           end)
 
-          ReqVCR.install!(
+          Reqord.install!(
             name: @test_stub,
             cassette: "readonly/test",
             mode: :new_episodes

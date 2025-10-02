@@ -1,6 +1,6 @@
 defmodule TestApi.Router do
   @moduledoc """
-  Simple API router for testing ReqVCR.
+  Simple API router for testing Reqord.
   """
 
   use Plug.Router

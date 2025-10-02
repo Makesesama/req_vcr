@@ -1,8 +1,8 @@
-# ReqVCR
+# Reqord
 
 VCR-style HTTP recording and replay for Elixir's [Req](https://hexdocs.pm/req) library, with zero application code changes required.
 
-ReqVCR integrates seamlessly with `Req.Test` to automatically record HTTP interactions to cassette files and replay them in your tests. Perfect for testing applications that interact with external APIs.
+Reqord integrates seamlessly with `Req.Test` to automatically record HTTP interactions to cassette files and replay them in your tests. Perfect for testing applications that interact with external APIs.
 
 ## Features
 
@@ -15,13 +15,13 @@ ReqVCR integrates seamlessly with `Req.Test` to automatically record HTTP intera
 
 ## Installation
 
-Add `req_vcr` to your list of dependencies in `mix.exs`:
+Add `reqord` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
     {:req, "~> 0.5"},
-    {:req_vcr, "~> 0.1.0"},
+    {:reqord, "~> 0.1.0"},
     {:jason, "~> 1.4"}  # Required for default JSON adapter
   ]
 end
@@ -51,11 +51,11 @@ Or if you're using Req directly in tests:
 Req.new(plug: {Req.Test, MyApp.ReqStub})
 ```
 
-### 2. Use ReqVCR.Case in your tests
+### 2. Use Reqord.Case in your tests
 
 ```elixir
 defmodule MyApp.APITest do
-  use ReqVCR.Case
+  use Reqord.Case
 
   # Your Req.Test stub name (must match the one in config)
   defp default_stub_name, do: MyApp.ReqStub
@@ -77,7 +77,7 @@ end
 
 ### Record Modes
 
-ReqVCR supports Ruby VCR-style record modes. Control via environment variable, config, or test tags.
+Reqord supports Ruby VCR-style record modes. Control via environment variable, config, or test tags.
 
 #### Available Modes
 
@@ -90,23 +90,23 @@ ReqVCR supports Ruby VCR-style record modes. Control via environment variable, c
 
 ```bash
 # Once mode (default) - strict replay
-REQ_VCR=once mix test
+REQORD=once mix test
 
 # New episodes mode - append new recordings
-REQ_VCR=new_episodes mix test
+REQORD=new_episodes mix test
 
 # All mode - always re-record everything
-REQ_VCR=all API_TOKEN=xxx mix test
+REQORD=all API_TOKEN=xxx mix test
 
 # None mode - never record, never hit network
-REQ_VCR=none mix test
+REQORD=none mix test
 ```
 
 #### Application Config
 
 ```elixir
 # config/test.exs
-config :req_vcr, default_mode: :once
+config :reqord, default_mode: :once
 ```
 
 #### Per-Test Override
@@ -124,7 +124,7 @@ Cassettes are automatically named based on your test module and test name:
 
 ```elixir
 defmodule MyApp.UserAPITest do
-  use ReqVCR.Case
+  use Reqord.Case
 
   # Creates cassette: test/support/cassettes/UserAPI/fetches_user_list.jsonl
   test "fetches user list" do
@@ -161,7 +161,7 @@ test "with spawned task" do
   end)
 
   # Allow the task's process to use the stub
-  ReqVCR.allow(MyApp.ReqStub, self(), task.pid)
+  Reqord.allow(MyApp.ReqStub, self(), task.pid)
 
   {:ok, response} = Task.await(task)
   assert response.status == 200
@@ -172,7 +172,7 @@ end
 
 ### Request Matching
 
-ReqVCR matches requests using a deterministic key:
+Reqord matches requests using a deterministic key:
 
 ```
 METHOD NORMALIZED_URL BODY_HASH
@@ -207,7 +207,7 @@ Each line is a JSON object containing:
 
 ### Redaction
 
-**🔒 ReqVCR ensures secrets never get committed to git** by automatically redacting sensitive data from cassettes.
+**🔒 Reqord ensures secrets never get committed to git** by automatically redacting sensitive data from cassettes.
 
 #### Built-in Redaction
 
@@ -232,7 +232,7 @@ For app-specific secrets, configure custom filters:
 
 ```elixir
 # config/test.exs
-config :req_vcr, :filters, [
+config :reqord, :filters, [
   {"<API_KEY>", fn -> System.get_env("API_KEY") end},
   {"<SHOPIFY_TOKEN>", fn -> Application.get_env(:my_app, :shopify_token) end}
 ]
@@ -243,9 +243,9 @@ These filters apply to headers, query parameters, and response bodies.
 ## Example Workflow
 
 ```bash
-# 1. Write your test using ReqVCR.Case
+# 1. Write your test using Reqord.Case
 # 2. Record cassettes (hits live API)
-REQ_VCR=record API_TOKEN=xxx mix test --include vcr
+REQORD=record API_TOKEN=xxx mix test --include vcr
 
 # 3. Commit cassettes to git
 git add test/support/cassettes/
@@ -255,12 +255,12 @@ git commit -m "Add API cassettes"
 mix test
 
 # 5. Update cassettes when API changes
-REQ_VCR=record API_TOKEN=xxx mix test --include vcr
+REQORD=record API_TOKEN=xxx mix test --include vcr
 ```
 
 ## Integration with Req.Test
 
-ReqVCR works alongside your existing `Req.Test` stubs and expectations:
+Reqord works alongside your existing `Req.Test` stubs and expectations:
 
 ```elixir
 test "with mixed stubs" do
@@ -284,16 +284,16 @@ end
 
 ### Configurable Settings
 
-ReqVCR provides several configuration options to customize its behavior:
+Reqord provides several configuration options to customize its behavior:
 
 ```elixir
 # config/config.exs
-config :req_vcr,
+config :reqord,
   # Cassette storage directory
   cassette_dir: "test/support/cassettes",
 
   # JSON library for encoding/decoding cassettes
-  json_library: ReqVCR.JSON.Jason,
+  json_library: Reqord.JSON.Jason,
 
   # Default record mode
   default_mode: :once,
@@ -320,7 +320,7 @@ Store cassettes in a different location:
 
 ```elixir
 # config/test.exs
-config :req_vcr, cassette_dir: "test/vcr_cassettes"
+config :reqord, cassette_dir: "test/vcr_cassettes"
 ```
 
 ### Custom Redaction Lists
@@ -329,7 +329,7 @@ Add your own auth parameters and headers to redact:
 
 ```elixir
 # config/config.exs
-config :req_vcr,
+config :reqord,
   auth_params: ~w[token apikey api_key my_custom_token],
   auth_headers: ~w[authorization x-api-key x-my-custom-auth],
   volatile_headers: ~w[date server x-trace-id x-my-volatile-header]
@@ -337,7 +337,7 @@ config :req_vcr,
 
 ### Custom JSON Library
 
-By default, ReqVCR uses Jason for JSON encoding/decoding. You can configure a different JSON library to:
+By default, Reqord uses Jason for JSON encoding/decoding. You can configure a different JSON library to:
 
 - Use your existing JSON library for consistency across your application
 - Take advantage of performance characteristics of different JSON libraries
@@ -345,22 +345,22 @@ By default, ReqVCR uses Jason for JSON encoding/decoding. You can configure a di
 
 ```elixir
 # config/config.exs
-config :req_vcr, :json_library, MyApp.JSONAdapter
+config :reqord, :json_library, MyApp.JSONAdapter
 ```
 
-Your adapter must implement the `ReqVCR.JSON` behavior:
+Your adapter must implement the `Reqord.JSON` behavior:
 
 ```elixir
 defmodule MyApp.JSONAdapter do
-  @behaviour ReqVCR.JSON
+  @behaviour Reqord.JSON
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def encode!(data), do: MyJSON.encode!(data)
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def decode(binary), do: MyJSON.decode(binary)
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def decode!(binary), do: MyJSON.decode!(binary)
 end
 ```
@@ -374,7 +374,7 @@ end
 
 ```elixir
 defmodule MyApp.APITest do
-  use ReqVCR.Case
+  use Reqord.Case
 
   # Override for all tests in this module
   defp default_stub_name, do: MyApp.CustomStub
@@ -387,7 +387,7 @@ For advanced use cases, you can install VCR manually:
 
 ```elixir
 setup do
-  ReqVCR.install!(
+  Reqord.install!(
     name: MyApp.ReqStub,
     cassette: "my_test",
     mode: :replay
@@ -399,42 +399,42 @@ end
 
 ## CLI Commands
 
-ReqVCR provides several Mix tasks to help manage your cassettes:
+Reqord provides several Mix tasks to help manage your cassettes:
 
-### `mix req_vcr.show`
+### `mix reqord.show`
 
 Display cassette contents in a readable format:
 
 ```bash
 # Show all entries in a cassette
-mix req_vcr.show MyTest/my_test.jsonl
+mix reqord.show MyTest/my_test.jsonl
 
 # Filter by URL pattern
-mix req_vcr.show MyTest/my_test.jsonl --grep "/users"
+mix reqord.show MyTest/my_test.jsonl --grep "/users"
 
 # Filter by HTTP method
-mix req_vcr.show MyTest/my_test.jsonl --method POST
+mix reqord.show MyTest/my_test.jsonl --method POST
 
 # Show raw JSON
-mix req_vcr.show MyTest/my_test.jsonl --raw
+mix reqord.show MyTest/my_test.jsonl --raw
 
 # Decode and pretty-print JSON response bodies
-mix req_vcr.show MyTest/my_test.jsonl --decode-body
+mix reqord.show MyTest/my_test.jsonl --decode-body
 ```
 
-### `mix req_vcr.audit`
+### `mix reqord.audit`
 
 Audit cassettes for potential issues:
 
 ```bash
 # Run all audits
-mix req_vcr.audit
+mix reqord.audit
 
 # Check for potential secrets only
-mix req_vcr.audit --secrets-only
+mix reqord.audit --secrets-only
 
 # Find stale cassettes (older than 90 days)
-mix req_vcr.audit --stale-days 90
+mix reqord.audit --stale-days 90
 ```
 
 The audit task reports:
@@ -442,51 +442,51 @@ The audit task reports:
 - **Stale cassettes**: Files older than specified days
 - **Unused cassettes**: Entries not hit during test runs (requires coverage data)
 
-### `mix req_vcr.prune`
+### `mix reqord.prune`
 
 Clean up cassette files:
 
 ```bash
 # Preview what would be removed (dry run)
-mix req_vcr.prune --dry-run
+mix reqord.prune --dry-run
 
 # Remove empty cassettes and duplicates
-mix req_vcr.prune
+mix reqord.prune
 
 # Remove cassettes older than 180 days
-mix req_vcr.prune --stale-days 180
+mix reqord.prune --stale-days 180
 
 # Remove only duplicate entries
-mix req_vcr.prune --duplicates-only
+mix reqord.prune --duplicates-only
 
 # Remove only empty files
-mix req_vcr.prune --empty-only
+mix reqord.prune --empty-only
 
 # Skip confirmation
-mix req_vcr.prune --force
+mix reqord.prune --force
 ```
 
-### `mix req_vcr.rename`
+### `mix reqord.rename`
 
 Rename or move cassette files:
 
 ```bash
 # Rename a single cassette
-mix req_vcr.rename old_name.jsonl new_name.jsonl
+mix reqord.rename old_name.jsonl new_name.jsonl
 
 # Move all cassettes from one module to another
-mix req_vcr.rename --from "OldModule/" --to "NewModule/"
+mix reqord.rename --from "OldModule/" --to "NewModule/"
 
 # Preview changes
-mix req_vcr.rename --from "OldModule/" --to "NewModule/" --dry-run
+mix reqord.rename --from "OldModule/" --to "NewModule/" --dry-run
 
 # Migrate cassettes to latest schema (for future schema changes)
-mix req_vcr.rename --migrate
+mix reqord.rename --migrate
 ```
 
 ## Example API for Testing
 
-This repository includes a test API server (`test_api/`) for demonstrating ReqVCR's functionality. It's a simple REST API with authentication that's used in the example tests.
+This repository includes a test API server (`test_api/`) for demonstrating Reqord's functionality. It's a simple REST API with authentication that's used in the example tests.
 
 ### Quick Start
 
@@ -508,7 +508,7 @@ This will:
 mix test test/example_api_test.exs
 
 # Re-record cassettes
-REQ_VCR=all mix test test/example_api_test.exs
+REQORD=all mix test test/example_api_test.exs
 ```
 
 See `test_api/README.md` for more details on the test API.
@@ -522,13 +522,13 @@ This means you're in `:once` mode but the cassette doesn't have a matching entry
 **Solution**: Record the cassette first:
 
 ```bash
-REQ_VCR=all mix test
+REQORD=all mix test
 ```
 
 Or use new_episodes mode to record on misses:
 
 ```bash
-REQ_VCR=new_episodes mix test
+REQORD=new_episodes mix test
 ```
 
 ### Tests fail with "No Req.Test stub found"
@@ -537,10 +537,10 @@ Make sure you've configured `Req.Test` in your test config and are using the cor
 
 ### Spawned processes can't make requests
 
-Use `ReqVCR.allow/3` to grant access:
+Use `Reqord.allow/3` to grant access:
 
 ```elixir
-ReqVCR.allow(MyApp.ReqStub, self(), spawned_pid)
+Reqord.allow(MyApp.ReqStub, self(), spawned_pid)
 ```
 
 ## Limitations

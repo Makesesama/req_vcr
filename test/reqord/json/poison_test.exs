@@ -1,8 +1,8 @@
-defmodule ReqVCR.JSON.PoisonTest do
+defmodule Reqord.JSON.PoisonTest do
   use ExUnit.Case
-  import ReqVCR.TestHelpers
+  import Reqord.TestHelpers
 
-  @test_stub ReqVCR.JSON.PoisonTest.Stub
+  @test_stub Reqord.JSON.PoisonTest.Stub
   @cassette_dir "test/support/cassettes"
 
   setup do
@@ -35,7 +35,7 @@ defmodule ReqVCR.JSON.PoisonTest do
 
   describe "Poison adapter" do
     test "encodes and decodes basic data structures" do
-      with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+      with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
         # Test basic data types
         test_cases = [
           %{"string" => "hello"},
@@ -48,40 +48,40 @@ defmodule ReqVCR.JSON.PoisonTest do
         ]
 
         Enum.each(test_cases, fn data ->
-          encoded = ReqVCR.JSON.encode!(data)
+          encoded = Reqord.JSON.encode!(data)
           assert is_binary(encoded)
 
-          {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+          {:ok, decoded} = Reqord.JSON.decode(encoded)
           assert decoded == data
 
-          decoded! = ReqVCR.JSON.decode!(encoded)
+          decoded! = Reqord.JSON.decode!(encoded)
           assert decoded! == data
         end)
       end)
     end
 
     test "handles encoding/decoding errors properly" do
-      with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+      with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
         # Test invalid JSON decoding
-        {:error, error} = ReqVCR.JSON.decode("invalid json {")
+        {:error, error} = Reqord.JSON.decode("invalid json {")
         assert is_struct(error, Poison.ParseError)
         assert Exception.message(error) =~ "unexpected"
 
         # Test decode! with invalid JSON
         assert_raise Poison.ParseError, fn ->
-          ReqVCR.JSON.decode!("invalid json {")
+          Reqord.JSON.decode!("invalid json {")
         end
 
         # Test encoding edge cases
         valid_data = %{"message" => "valid"}
-        encoded = ReqVCR.JSON.encode!(valid_data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(valid_data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == valid_data
       end)
     end
 
     test "creates and loads real cassettes" do
-      with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+      with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
         # Create a realistic cassette entry
         cassette_path = Path.join(@cassette_dir, "poison_adapter_integration.jsonl")
 
@@ -110,8 +110,8 @@ defmodule ReqVCR.JSON.PoisonTest do
           }
         }
 
-        # Write cassette using ReqVCR.JSON
-        encoded = ReqVCR.JSON.encode!(test_entry)
+        # Write cassette using Reqord.JSON
+        encoded = Reqord.JSON.encode!(test_entry)
         File.write!(cassette_path, encoded <> "\n")
 
         # Verify file was written correctly
@@ -120,12 +120,12 @@ defmodule ReqVCR.JSON.PoisonTest do
         assert String.contains?(content, "body_b64")
 
         # Verify we can load it back
-        {:ok, decoded} = ReqVCR.JSON.decode(String.trim(content))
+        {:ok, decoded} = Reqord.JSON.decode(String.trim(content))
         assert decoded["req"]["method"] == "GET"
         assert decoded["resp"]["status"] == 200
 
         # Test VCR integration
-        ReqVCR.install!(
+        Reqord.install!(
           name: @test_stub,
           cassette: "poison_adapter_integration",
           mode: :once
@@ -142,7 +142,7 @@ defmodule ReqVCR.JSON.PoisonTest do
     end
 
     test "handles complex nested structures" do
-      with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+      with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
         # Test deeply nested structure
         complex_data = %{
           "metadata" => %{
@@ -167,8 +167,8 @@ defmodule ReqVCR.JSON.PoisonTest do
           ]
         }
 
-        encoded = ReqVCR.JSON.encode!(complex_data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(complex_data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == complex_data
 
         # Verify specific nested access
@@ -182,7 +182,7 @@ defmodule ReqVCR.JSON.PoisonTest do
     end
 
     test "preserves string encoding and special characters" do
-      with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+      with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
         # Test Unicode and special characters
         special_data = %{
           "unicode" => "Bonjour 世界 🌟",
@@ -192,8 +192,8 @@ defmodule ReqVCR.JSON.PoisonTest do
           "mixed" => "Símbolos: 🔥 ⭐ 🎈 Chinese: 再见 Russian: Привет"
         }
 
-        encoded = ReqVCR.JSON.encode!(special_data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(special_data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == special_data
 
         # Verify specific characters are preserved
@@ -205,7 +205,7 @@ defmodule ReqVCR.JSON.PoisonTest do
 
     test "adapter module exists and has required functions" do
       # Test the adapter module exists
-      adapter = ReqVCR.JSON.Poison
+      adapter = Reqord.JSON.Poison
 
       assert is_atom(adapter)
 
@@ -216,10 +216,10 @@ defmodule ReqVCR.JSON.PoisonTest do
       assert function_exported?(adapter, :decode!, 1)
 
       # If Poison is available, test basic functionality
-      with_module_and_config(Poison, "Poison", :req_vcr, :json_library, ReqVCR.JSON.Poison, fn ->
+      with_module_and_config(Poison, "Poison", :reqord, :json_library, Reqord.JSON.Poison, fn ->
         data = %{"test" => "poison works"}
-        encoded = ReqVCR.JSON.encode!(data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == data
       end)
     end

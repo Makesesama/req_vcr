@@ -1,34 +1,34 @@
-defmodule ReqVCR.JSON do
+defmodule Reqord.JSON do
   @moduledoc """
   Behavior for JSON encoding and decoding.
 
-  This allows users to configure their preferred JSON library for use with ReqVCR.
-  By default, ReqVCR uses Jason, but you can configure it to use any JSON library
+  This allows users to configure their preferred JSON library for use with Reqord.
+  By default, Reqord uses Jason, but you can configure it to use any JSON library
   that implements this behavior.
 
   ## Configuration
 
   In your application config:
 
-      config :req_vcr, :json_library, MyApp.JSONAdapter
+      config :reqord, :json_library, MyApp.JSONAdapter
 
   ## Built-in Adapters
 
-  - `ReqVCR.JSON.Jason` - Default adapter using the Jason library
+  - `Reqord.JSON.Jason` - Default adapter using the Jason library
 
   ## Custom Adapters
 
   To create a custom adapter, implement this behavior:
 
       defmodule MyApp.JSONAdapter do
-        @behaviour ReqVCR.JSON
+        @behaviour Reqord.JSON
 
-        @impl ReqVCR.JSON
+        @impl Reqord.JSON
         def encode!(data) do
           MyJSONLibrary.encode!(data)
         end
 
-        @impl ReqVCR.JSON
+        @impl Reqord.JSON
         def decode(binary) do
           case MyJSONLibrary.decode(binary) do
             {:ok, data} -> {:ok, data}
@@ -36,7 +36,7 @@ defmodule ReqVCR.JSON do
           end
         end
 
-        @impl ReqVCR.JSON
+        @impl Reqord.JSON
         def decode!(binary) do
           MyJSONLibrary.decode!(binary)
         end
@@ -73,7 +73,7 @@ defmodule ReqVCR.JSON do
 
   ## Examples
 
-      iex> ReqVCR.JSON.encode!(%{name: "John"})
+      iex> Reqord.JSON.encode!(%{name: "John"})
       ~s({"name":"John"})
   """
   @spec encode!(json_data()) :: json_binary()
@@ -86,10 +86,10 @@ defmodule ReqVCR.JSON do
 
   ## Examples
 
-      iex> ReqVCR.JSON.decode(~s({"name":"John"}))
+      iex> Reqord.JSON.decode(~s({"name":"John"}))
       {:ok, %{"name" => "John"}}
 
-      iex> ReqVCR.JSON.decode("invalid json")
+      iex> Reqord.JSON.decode("invalid json")
       {:error, %Jason.DecodeError{...}}
   """
   @spec decode(json_binary()) :: {:ok, json_data()} | {:error, decode_error()}
@@ -104,7 +104,7 @@ defmodule ReqVCR.JSON do
 
   ## Examples
 
-      iex> ReqVCR.JSON.decode!(~s({"name":"John"}))
+      iex> Reqord.JSON.decode!(~s({"name":"John"}))
       %{"name" => "John"}
   """
   @spec decode!(json_binary()) :: json_data()
@@ -115,6 +115,6 @@ defmodule ReqVCR.JSON do
   # Private functions
 
   defp adapter do
-    Application.get_env(:req_vcr, :json_library, ReqVCR.JSON.Jason)
+    Application.get_env(:reqord, :json_library, Reqord.JSON.Jason)
   end
 end

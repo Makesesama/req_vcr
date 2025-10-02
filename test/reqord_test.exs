@@ -1,7 +1,7 @@
-defmodule ReqVCRTest do
+defmodule ReqordTest do
   use ExUnit.Case
 
-  @test_stub ReqVCRTest.Stub
+  @test_stub ReqordTest.Stub
   @cassette_dir "test/support/cassettes"
 
   setup do
@@ -48,7 +48,7 @@ defmodule ReqVCRTest do
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
       # Install VCR in replay mode
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "replay_test",
         mode: :once
@@ -75,7 +75,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(name: @test_stub, cassette: "text_test", mode: :once)
+      Reqord.install!(name: @test_stub, cassette: "text_test", mode: :once)
 
       client = Req.new(plug: {Req.Test, @test_stub})
       {:ok, response} = Req.get(client, url: "https://api.example.com/data")
@@ -85,7 +85,7 @@ defmodule ReqVCRTest do
     end
 
     test "raises error when cassette entry not found" do
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "empty_test",
         mode: :once
@@ -93,7 +93,7 @@ defmodule ReqVCRTest do
 
       client = Req.new(plug: {Req.Test, @test_stub})
 
-      assert_raise ReqVCR.CassetteMissError, ~r/No cassette entry found/, fn ->
+      assert_raise Reqord.CassetteMissError, ~r/No cassette entry found/, fn ->
         Req.get!(client, url: "https://api.example.com/users")
       end
     end
@@ -119,7 +119,7 @@ defmodule ReqVCRTest do
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
       # Install VCR in replay mode
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "no_network_test",
         mode: :once
@@ -147,7 +147,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "query_order_test",
         mode: :once
@@ -171,7 +171,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "auth_param_test",
         mode: :once
@@ -225,7 +225,7 @@ defmodule ReqVCRTest do
         Jason.encode!(entry1) <> "\n" <> Jason.encode!(entry2) <> "\n"
       )
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "post_test",
         mode: :once,
@@ -260,7 +260,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "once_replay_test",
         mode: :once
@@ -273,7 +273,7 @@ defmodule ReqVCRTest do
     end
 
     test "mode :once - raises on new request" do
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "once_strict_test",
         mode: :once
@@ -281,7 +281,7 @@ defmodule ReqVCRTest do
 
       client = Req.new(plug: {Req.Test, @test_stub})
 
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/new")
       end
     end
@@ -296,7 +296,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "new_episodes_test",
         mode: :new_episodes
@@ -327,7 +327,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "all_test",
         mode: :all
@@ -359,7 +359,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "none_test",
         mode: :none
@@ -372,7 +372,7 @@ defmodule ReqVCRTest do
       assert response.body == "cached"
 
       # New request raises error
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/new")
       end
     end
@@ -396,7 +396,7 @@ defmodule ReqVCRTest do
       content = Enum.map_join(entries, "\n", &Jason.encode!/1) <> "\n"
       File.write!(cassette_path, content)
 
-      ReqVCR.install!(name: @test_stub, cassette: "multi_entry_test", mode: :once)
+      Reqord.install!(name: @test_stub, cassette: "multi_entry_test", mode: :once)
 
       client = Req.new(plug: {Req.Test, @test_stub})
 
@@ -409,12 +409,12 @@ defmodule ReqVCRTest do
 
     test "handles missing cassette file gracefully" do
       # Don't create any cassette file
-      ReqVCR.install!(name: @test_stub, cassette: "nonexistent", mode: :once)
+      Reqord.install!(name: @test_stub, cassette: "nonexistent", mode: :once)
 
       client = Req.new(plug: {Req.Test, @test_stub})
 
       # Should raise cassette miss error, not file error
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/data")
       end
     end
@@ -431,7 +431,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(name: @test_stub, cassette: "port_test", mode: :once)
+      Reqord.install!(name: @test_stub, cassette: "port_test", mode: :once)
 
       client = Req.new(plug: {Req.Test, @test_stub})
 
@@ -459,7 +459,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(name: @test_stub, cassette: "header_test", mode: :once)
+      Reqord.install!(name: @test_stub, cassette: "header_test", mode: :once)
 
       client = Req.new(plug: {Req.Test, @test_stub})
       {:ok, response} = Req.get(client, url: "https://api.example.com/data")
@@ -472,7 +472,7 @@ defmodule ReqVCRTest do
   describe "flexible request matching" do
     setup do
       # Clean up custom matchers after each test
-      on_exit(fn -> ReqVCR.clear_matchers() end)
+      on_exit(fn -> Reqord.clear_matchers() end)
       :ok
     end
 
@@ -486,7 +486,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "method_test",
         match_on: [:method]
@@ -509,7 +509,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "host_test",
         match_on: [:method, :host]
@@ -532,7 +532,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "path_test",
         match_on: [:method, :path]
@@ -560,7 +560,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "headers_matcher_test",
         match_on: [:method, :uri, :headers]
@@ -606,7 +606,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry1) <> "\n" <> Jason.encode!(entry2) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "body_matcher_test",
         match_on: [:method, :uri, :body]
@@ -640,12 +640,12 @@ defmodule ReqVCRTest do
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
       # Register custom matcher for API version
-      ReqVCR.register_matcher(:api_version, fn conn, %ReqVCR.CassetteEntry{req: req} ->
+      Reqord.register_matcher(:api_version, fn conn, %Reqord.CassetteEntry{req: req} ->
         version = Plug.Conn.get_req_header(conn, "x-version") |> List.first()
         version == Map.get(req.headers, "x-version")
       end)
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "custom_matcher_test",
         match_on: [:method, :uri, :api_version]
@@ -662,16 +662,16 @@ defmodule ReqVCRTest do
     end
 
     test "multiple custom matchers can be registered" do
-      ReqVCR.register_matcher(:matcher1, fn _conn, _entry -> true end)
-      ReqVCR.register_matcher(:matcher2, fn _conn, _entry -> true end)
+      Reqord.register_matcher(:matcher1, fn _conn, _entry -> true end)
+      Reqord.register_matcher(:matcher2, fn _conn, _entry -> true end)
 
       # Should not raise - both matchers registered successfully
       assert :ok == :ok
     end
 
     test "clear_matchers removes all custom matchers" do
-      ReqVCR.register_matcher(:test_matcher, fn _conn, _entry -> true end)
-      ReqVCR.clear_matchers()
+      Reqord.register_matcher(:test_matcher, fn _conn, _entry -> true end)
+      Reqord.clear_matchers()
 
       # After clearing, using unknown matcher should log warning but not crash
       cassette_path = Path.join(@cassette_dir, "cleared_matcher_test.jsonl")
@@ -683,7 +683,7 @@ defmodule ReqVCRTest do
 
       File.write!(cassette_path, Jason.encode!(entry) <> "\n")
 
-      ReqVCR.install!(
+      Reqord.install!(
         name: @test_stub,
         cassette: "cleared_matcher_test",
         match_on: [:test_matcher]
@@ -692,7 +692,7 @@ defmodule ReqVCRTest do
       client = Req.new(plug: {Req.Test, @test_stub})
 
       # Should raise cassette miss because matcher returns false
-      assert_raise ReqVCR.CassetteMissError, fn ->
+      assert_raise Reqord.CassetteMissError, fn ->
         Req.get!(client, url: "https://api.example.com/data")
       end
     end

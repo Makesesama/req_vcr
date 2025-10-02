@@ -1,6 +1,6 @@
-defmodule ReqVCR.Case do
+defmodule Reqord.Case do
   @moduledoc """
-  ExUnit case template for using ReqVCR in tests.
+  ExUnit case template for using Reqord in tests.
 
   This module provides automatic cassette management and Req.Test integration
   for your tests.
@@ -8,7 +8,7 @@ defmodule ReqVCR.Case do
   ## Usage
 
       defmodule MyAppTest do
-        use ReqVCR.Case
+        use Reqord.Case
 
         test "makes API call" do
           # Requests will automatically use cassettes
@@ -29,20 +29,20 @@ defmodule ReqVCR.Case do
 
   ## Configuration
 
-  Set the VCR record mode via the `REQ_VCR` environment variable or application config.
+  Set the VCR record mode via the `REQORD` environment variable or application config.
 
   ### Environment Variable
 
-  - `REQ_VCR=once` - Strict replay, raise on new requests (default)
-  - `REQ_VCR=new_episodes` - Replay existing, record new requests
-  - `REQ_VCR=all` - Always hit live network and re-record
-  - `REQ_VCR=none` - Never record, never hit network
+  - `REQORD=once` - Strict replay, raise on new requests (default)
+  - `REQORD=new_episodes` - Replay existing, record new requests
+  - `REQORD=all` - Always hit live network and re-record
+  - `REQORD=none` - Never record, never hit network
 
   ### Application Config
 
   You can also configure the default mode in your config files:
 
-      config :req_vcr, default_mode: :once
+      config :reqord, default_mode: :once
 
   ### Per-Test Mode
 
@@ -83,7 +83,7 @@ defmodule ReqVCR.Case do
           Req.get("https://api.example.com/data")
         end)
 
-        ReqVCR.allow(MyApp.ReqStub, self(), task.pid)
+        Reqord.allow(MyApp.ReqStub, self(), task.pid)
         Task.await(task)
       end
   """
@@ -97,14 +97,14 @@ defmodule ReqVCR.Case do
         stub_name = context[:req_stub_name] || default_stub_name()
         mode = vcr_mode(context)
         cassette_name = cassette_name(context)
-        match_on = context[:match_on] || Application.get_env(:req_vcr, :match_on, [:method, :uri])
+        match_on = context[:match_on] || Application.get_env(:reqord, :match_on, [:method, :uri])
 
         # Set up Req.Test in private mode
         Req.Test.set_req_test_to_private()
         Req.Test.set_req_test_from_context(context)
 
         # Install VCR
-        ReqVCR.install!(
+        Reqord.install!(
           name: stub_name,
           cassette: cassette_name,
           mode: mode,
@@ -134,11 +134,11 @@ defmodule ReqVCR.Case do
             context[:vcr_mode]
 
           # 2. Check environment variable
-          env_mode = System.get_env("REQ_VCR") ->
+          env_mode = System.get_env("REQORD") ->
             parse_mode(env_mode)
 
           # 3. Check application config
-          app_mode = Application.get_env(:req_vcr, :default_mode) ->
+          app_mode = Application.get_env(:reqord, :default_mode) ->
             app_mode
 
           # 4. Default to :once

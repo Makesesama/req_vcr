@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.ReqVcr.Prune do
+defmodule Mix.Tasks.Reqord.Prune do
   @moduledoc """
   Removes unused cassette entries and files.
 
@@ -9,10 +9,10 @@ defmodule Mix.Tasks.ReqVcr.Prune do
 
   ## Usage
 
-      mix req_vcr.prune
-      mix req_vcr.prune --dry-run
-      mix req_vcr.prune --stale-days 180
-      mix req_vcr.prune --duplicates-only
+      mix reqord.prune
+      mix reqord.prune --dry-run
+      mix reqord.prune --stale-days 180
+      mix reqord.prune --duplicates-only
 
   ## Options
 

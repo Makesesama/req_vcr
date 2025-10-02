@@ -1,4 +1,4 @@
-defmodule ReqVCR.Redactor do
+defmodule Reqord.Redactor do
   @moduledoc """
   Handles redaction of sensitive data from HTTP requests and responses.
 
@@ -9,7 +9,7 @@ defmodule ReqVCR.Redactor do
 
   Configure sensitive data filters in your application config:
 
-      config :req_vcr, :filters, [
+      config :reqord, :filters, [
         {"<API_KEY>", fn -> System.get_env("API_KEY") end},
         {"<TOKEN>", fn -> Application.get_env(:my_app, :api_token) end}
       ]
@@ -23,17 +23,17 @@ defmodule ReqVCR.Redactor do
   - Long alphanumeric strings that look like secrets
   """
 
-  alias ReqVCR.Config
+  alias Reqord.Config
 
   @doc """
   Redacts sensitive information from request headers.
 
   ## Examples
 
-      iex> ReqVCR.Redactor.redact_headers([{"authorization", "Bearer secret123"}])
+      iex> Reqord.Redactor.redact_headers([{"authorization", "Bearer secret123"}])
       %{"authorization" => "<REDACTED>"}
 
-      iex> ReqVCR.Redactor.redact_headers([{"content-type", "application/json"}])
+      iex> Reqord.Redactor.redact_headers([{"content-type", "application/json"}])
       %{"content-type" => "application/json"}
   """
   @spec redact_headers(list() | map()) :: map()
@@ -55,7 +55,7 @@ defmodule ReqVCR.Redactor do
 
   ## Examples
 
-      iex> ReqVCR.Redactor.redact_url("https://api.com/users?token=secret&name=john")
+      iex> Reqord.Redactor.redact_url("https://api.com/users?token=secret&name=john")
       "https://api.com/users?name=john&token=<REDACTED>"
   """
   @spec redact_url(String.t()) :: String.t()
@@ -91,7 +91,7 @@ defmodule ReqVCR.Redactor do
 
   ## Examples
 
-      iex> ReqVCR.Redactor.redact_response_body(~s({"access_token": "secret123"}))
+      iex> Reqord.Redactor.redact_response_body(~s({"access_token": "secret123"}))
       ~s({"access_token": "<REDACTED>"})
   """
   @spec redact_response_body(binary()) :: binary()
@@ -109,11 +109,11 @@ defmodule ReqVCR.Redactor do
 
   # Redact secrets in JSON responses
   defp redact_json_secrets(body) do
-    case ReqVCR.JSON.decode(body) do
+    case Reqord.JSON.decode(body) do
       {:ok, json} ->
         json
         |> redact_json_values()
-        |> ReqVCR.JSON.encode!()
+        |> Reqord.JSON.encode!()
 
       {:error, _} ->
         # Not valid JSON, return as-is

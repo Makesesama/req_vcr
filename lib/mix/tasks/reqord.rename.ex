@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.ReqVcr.Rename do
+defmodule Mix.Tasks.Reqord.Rename do
   @moduledoc """
   Rename or move cassette files.
 
@@ -7,13 +7,13 @@ defmodule Mix.Tasks.ReqVcr.Rename do
   ## Usage
 
       # Rename a single cassette
-      mix req_vcr.rename old_name.jsonl new_name.jsonl
+      mix reqord.rename old_name.jsonl new_name.jsonl
 
       # Move cassettes to a new directory structure
-      mix req_vcr.rename --from "OldModule/" --to "NewModule/"
+      mix reqord.rename --from "OldModule/" --to "NewModule/"
 
       # Migrate cassettes (for future schema changes)
-      mix req_vcr.rename --migrate
+      mix reqord.rename --migrate
 
   ## Options
 
@@ -64,7 +64,7 @@ defmodule Mix.Tasks.ReqVcr.Rename do
         run_single_rename(cassette_dir, from, to, opts)
 
       true ->
-        Mix.Shell.IO.error("Usage: mix req_vcr.rename <from> <to> OR --from PREFIX --to PREFIX")
+        Mix.Shell.IO.error("Usage: mix reqord.rename <from> <to> OR --from PREFIX --to PREFIX")
 
         exit({:shutdown, 1})
     end

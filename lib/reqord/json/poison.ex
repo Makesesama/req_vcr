@@ -1,4 +1,4 @@
-defmodule ReqVCR.JSON.Poison do
+defmodule Reqord.JSON.Poison do
   @moduledoc """
   JSON adapter for the Poison library.
 
@@ -6,18 +6,18 @@ defmodule ReqVCR.JSON.Poison do
 
   ## Usage
 
-  Add Poison to your dependencies and configure ReqVCR to use it:
+  Add Poison to your dependencies and configure Reqord to use it:
 
       # mix.exs
       def deps do
         [
           {:poison, "~> 5.0"},
-          {:req_vcr, "~> 0.1.0"}
+          {:reqord, "~> 0.1.0"}
         ]
       end
 
       # config/config.exs
-      config :req_vcr, :json_library, ReqVCR.JSON.Poison
+      config :reqord, :json_library, Reqord.JSON.Poison
 
   ## Features
 
@@ -26,21 +26,21 @@ defmodule ReqVCR.JSON.Poison do
   - Wide ecosystem compatibility
   """
 
-  @behaviour ReqVCR.JSON
+  @behaviour Reqord.JSON
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def encode!(data) do
     ensure_poison_available!()
     Poison.encode!(data)
   end
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def decode(binary) do
     ensure_poison_available!()
     Poison.decode(binary)
   end
 
-  @impl ReqVCR.JSON
+  @impl Reqord.JSON
   def decode!(binary) do
     ensure_poison_available!()
     Poison.decode!(binary)
@@ -61,9 +61,9 @@ defmodule ReqVCR.JSON.Poison do
             ]
           end
 
-      Then configure ReqVCR to use it:
+      Then configure Reqord to use it:
 
-          config :req_vcr, :json_library, ReqVCR.JSON.Poison
+          config :reqord, :json_library, Reqord.JSON.Poison
       """
     end
   end

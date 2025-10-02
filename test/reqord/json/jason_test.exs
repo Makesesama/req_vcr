@@ -1,8 +1,8 @@
-defmodule ReqVCR.JSON.JasonTest do
+defmodule Reqord.JSON.JasonTest do
   use ExUnit.Case
-  import ReqVCR.TestHelpers
+  import Reqord.TestHelpers
 
-  @test_stub ReqVCR.JSON.JasonTest.Stub
+  @test_stub Reqord.JSON.JasonTest.Stub
   @cassette_dir "test/support/cassettes"
 
   setup do
@@ -35,7 +35,7 @@ defmodule ReqVCR.JSON.JasonTest do
 
   describe "Jason adapter" do
     test "encodes and decodes basic data structures" do
-      with_module_and_config(Jason, "Jason", :req_vcr, :json_library, ReqVCR.JSON.Jason, fn ->
+      with_module_and_config(Jason, "Jason", :reqord, :json_library, Reqord.JSON.Jason, fn ->
         # Test basic data types
         test_cases = [
           %{"string" => "hello"},
@@ -48,40 +48,40 @@ defmodule ReqVCR.JSON.JasonTest do
         ]
 
         Enum.each(test_cases, fn data ->
-          encoded = ReqVCR.JSON.encode!(data)
+          encoded = Reqord.JSON.encode!(data)
           assert is_binary(encoded)
 
-          {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+          {:ok, decoded} = Reqord.JSON.decode(encoded)
           assert decoded == data
 
-          decoded! = ReqVCR.JSON.decode!(encoded)
+          decoded! = Reqord.JSON.decode!(encoded)
           assert decoded! == data
         end)
       end)
     end
 
     test "handles encoding/decoding errors properly" do
-      with_module_and_config(Jason, "Jason", :req_vcr, :json_library, ReqVCR.JSON.Jason, fn ->
+      with_module_and_config(Jason, "Jason", :reqord, :json_library, Reqord.JSON.Jason, fn ->
         # Test invalid JSON decoding
-        {:error, error} = ReqVCR.JSON.decode("invalid json {")
+        {:error, error} = Reqord.JSON.decode("invalid json {")
         assert is_struct(error, Jason.DecodeError)
         assert Exception.message(error) =~ "unexpected"
 
         # Test decode! with invalid JSON
         assert_raise Jason.DecodeError, fn ->
-          ReqVCR.JSON.decode!("invalid json {")
+          Reqord.JSON.decode!("invalid json {")
         end
 
         # Test encoding edge cases
         valid_data = %{"message" => "valid"}
-        encoded = ReqVCR.JSON.encode!(valid_data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(valid_data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == valid_data
       end)
     end
 
     test "creates and loads real cassettes" do
-      with_module_and_config(Jason, "Jason", :req_vcr, :json_library, ReqVCR.JSON.Jason, fn ->
+      with_module_and_config(Jason, "Jason", :reqord, :json_library, Reqord.JSON.Jason, fn ->
         # Create a realistic cassette entry
         cassette_path = Path.join(@cassette_dir, "jason_adapter_integration.jsonl")
 
@@ -110,8 +110,8 @@ defmodule ReqVCR.JSON.JasonTest do
           }
         }
 
-        # Write cassette using ReqVCR.JSON
-        encoded = ReqVCR.JSON.encode!(test_entry)
+        # Write cassette using Reqord.JSON
+        encoded = Reqord.JSON.encode!(test_entry)
         File.write!(cassette_path, encoded <> "\n")
 
         # Verify file was written correctly
@@ -120,12 +120,12 @@ defmodule ReqVCR.JSON.JasonTest do
         assert String.contains?(content, "body_b64")
 
         # Verify we can load it back
-        {:ok, decoded} = ReqVCR.JSON.decode(String.trim(content))
+        {:ok, decoded} = Reqord.JSON.decode(String.trim(content))
         assert decoded["req"]["method"] == "GET"
         assert decoded["resp"]["status"] == 200
 
         # Test VCR integration
-        ReqVCR.install!(
+        Reqord.install!(
           name: @test_stub,
           cassette: "jason_adapter_integration",
           mode: :once
@@ -142,7 +142,7 @@ defmodule ReqVCR.JSON.JasonTest do
     end
 
     test "handles complex nested structures" do
-      with_module_and_config(Jason, "Jason", :req_vcr, :json_library, ReqVCR.JSON.Jason, fn ->
+      with_module_and_config(Jason, "Jason", :reqord, :json_library, Reqord.JSON.Jason, fn ->
         # Test deeply nested structure
         complex_data = %{
           "metadata" => %{
@@ -167,8 +167,8 @@ defmodule ReqVCR.JSON.JasonTest do
           ]
         }
 
-        encoded = ReqVCR.JSON.encode!(complex_data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(complex_data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == complex_data
 
         # Verify specific nested access
@@ -182,7 +182,7 @@ defmodule ReqVCR.JSON.JasonTest do
     end
 
     test "preserves string encoding and special characters" do
-      with_module_and_config(Jason, "Jason", :req_vcr, :json_library, ReqVCR.JSON.Jason, fn ->
+      with_module_and_config(Jason, "Jason", :reqord, :json_library, Reqord.JSON.Jason, fn ->
         # Test Unicode and special characters
         special_data = %{
           "unicode" => "Hello 世界 🌍",
@@ -192,8 +192,8 @@ defmodule ReqVCR.JSON.JasonTest do
           "mixed" => "Émojis: 🚀 ✨ 🎉 Chinese: 你好 Arabic: مرحبا"
         }
 
-        encoded = ReqVCR.JSON.encode!(special_data)
-        {:ok, decoded} = ReqVCR.JSON.decode(encoded)
+        encoded = Reqord.JSON.encode!(special_data)
+        {:ok, decoded} = Reqord.JSON.decode(encoded)
         assert decoded == special_data
 
         # Verify specific characters are preserved

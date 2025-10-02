@@ -1,4 +1,4 @@
-defmodule Mix.Tasks.ReqVcr.Audit do
+defmodule Mix.Tasks.Reqord.Audit do
   @moduledoc """
   Audits cassette files for potential issues.
 
@@ -9,10 +9,10 @@ defmodule Mix.Tasks.ReqVcr.Audit do
 
   ## Usage
 
-      mix req_vcr.audit
-      mix req_vcr.audit --secrets-only
-      mix req_vcr.audit --unused-only
-      mix req_vcr.audit --stale-days 90
+      mix reqord.audit
+      mix reqord.audit --secrets-only
+      mix reqord.audit --unused-only
+      mix reqord.audit --stale-days 90
 
   ## Options
 

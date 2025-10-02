@@ -1,6 +1,6 @@
-defmodule ReqVCR.Config do
+defmodule Reqord.Config do
   @moduledoc """
-  Configuration management for ReqVCR.
+  Configuration management for Reqord.
 
   This module provides centralized access to all configurable settings,
   with sensible defaults and the ability to override via application config.
@@ -9,31 +9,31 @@ defmodule ReqVCR.Config do
 
   ### Cassette Directory
 
-      config :req_vcr, :cassette_dir, "test/support/cassettes"
+      config :reqord, :cassette_dir, "test/support/cassettes"
 
   ### Auth Parameters (for redaction)
 
-      config :req_vcr, :auth_params, ~w[token apikey api_key access_token refresh_token jwt bearer password secret]
+      config :reqord, :auth_params, ~w[token apikey api_key access_token refresh_token jwt bearer password secret]
 
   ### Auth Headers (for redaction)
 
-      config :req_vcr, :auth_headers, ~w[authorization auth x-api-key x-auth-token x-access-token cookie]
+      config :reqord, :auth_headers, ~w[authorization auth x-api-key x-auth-token x-access-token cookie]
 
   ### Volatile Headers (removed from responses)
 
-      config :req_vcr, :volatile_headers, ~w[date server set-cookie request-id x-request-id x-amzn-trace-id]
+      config :reqord, :volatile_headers, ~w[date server set-cookie request-id x-request-id x-amzn-trace-id]
 
   ### JSON Library
 
-      config :req_vcr, :json_library, ReqVCR.JSON.Jason
+      config :reqord, :json_library, Reqord.JSON.Jason
 
   ### Default Record Mode
 
-      config :req_vcr, :default_mode, :once
+      config :reqord, :default_mode, :once
 
   ### Custom Filters (for additional redaction)
 
-      config :req_vcr, :filters, [
+      config :reqord, :filters, [
         {"<API_KEY>", fn -> System.get_env("API_KEY") end},
         {"<SHOPIFY_TOKEN>", fn -> Application.get_env(:my_app, :shopify_token) end}
       ]
@@ -51,17 +51,17 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.cassette_dir()
+      iex> Reqord.Config.cassette_dir()
       "test/support/cassettes"
 
       # With custom config
-      iex> Application.put_env(:req_vcr, :cassette_dir, "test/cassettes")
-      iex> ReqVCR.Config.cassette_dir()
+      iex> Application.put_env(:reqord, :cassette_dir, "test/cassettes")
+      iex> Reqord.Config.cassette_dir()
       "test/cassettes"
   """
   @spec cassette_dir() :: String.t()
   def cassette_dir do
-    Application.get_env(:req_vcr, :cassette_dir, @default_cassette_dir)
+    Application.get_env(:reqord, :cassette_dir, @default_cassette_dir)
   end
 
   @doc """
@@ -71,12 +71,12 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.auth_params()
+      iex> Reqord.Config.auth_params()
       ["token", "apikey", "api_key", "access_token", "refresh_token", "jwt", "bearer", "password", "secret"]
   """
   @spec auth_params() :: [String.t()]
   def auth_params do
-    Application.get_env(:req_vcr, :auth_params, @default_auth_params)
+    Application.get_env(:reqord, :auth_params, @default_auth_params)
   end
 
   @doc """
@@ -86,12 +86,12 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.auth_headers()
+      iex> Reqord.Config.auth_headers()
       ["authorization", "auth", "x-api-key", "x-auth-token", "x-access-token", "cookie"]
   """
   @spec auth_headers() :: [String.t()]
   def auth_headers do
-    Application.get_env(:req_vcr, :auth_headers, @default_auth_headers)
+    Application.get_env(:reqord, :auth_headers, @default_auth_headers)
   end
 
   @doc """
@@ -101,27 +101,27 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.volatile_headers()
+      iex> Reqord.Config.volatile_headers()
       ["date", "server", "set-cookie", "request-id", "x-request-id", "x-amzn-trace-id"]
   """
   @spec volatile_headers() :: [String.t()]
   def volatile_headers do
-    Application.get_env(:req_vcr, :volatile_headers, @default_volatile_headers)
+    Application.get_env(:reqord, :volatile_headers, @default_volatile_headers)
   end
 
   @doc """
   Gets the configured JSON library module.
 
-  Defaults to ReqVCR.JSON.Jason if not configured.
+  Defaults to Reqord.JSON.Jason if not configured.
 
   ## Examples
 
-      iex> ReqVCR.Config.json_library()
-      ReqVCR.JSON.Jason
+      iex> Reqord.Config.json_library()
+      Reqord.JSON.Jason
   """
   @spec json_library() :: module()
   def json_library do
-    Application.get_env(:req_vcr, :json_library, ReqVCR.JSON.Jason)
+    Application.get_env(:reqord, :json_library, Reqord.JSON.Jason)
   end
 
   @doc """
@@ -131,12 +131,12 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.default_mode()
+      iex> Reqord.Config.default_mode()
       :once
   """
   @spec default_mode() :: :once | :new_episodes | :all | :none
   def default_mode do
-    Application.get_env(:req_vcr, :default_mode, :once)
+    Application.get_env(:reqord, :default_mode, :once)
   end
 
   @doc """
@@ -146,17 +146,17 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.custom_filters()
+      iex> Reqord.Config.custom_filters()
       []
 
       # With custom filters configured
-      iex> Application.put_env(:req_vcr, :filters, [{"<API_KEY>", fn -> "secret123" end}])
-      iex> ReqVCR.Config.custom_filters()
+      iex> Application.put_env(:reqord, :filters, [{"<API_KEY>", fn -> "secret123" end}])
+      iex> Reqord.Config.custom_filters()
       [{"<API_KEY>", #Function<...>}]
   """
   @spec custom_filters() :: [{String.t(), (-> String.t() | nil)}]
   def custom_filters do
-    Application.get_env(:req_vcr, :filters, [])
+    Application.get_env(:reqord, :filters, [])
   end
 
   @doc """
@@ -167,7 +167,7 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.cassette_path("my_test")
+      iex> Reqord.Config.cassette_path("my_test")
       "test/support/cassettes/my_test.jsonl"
   """
   @spec cassette_path(String.t()) :: String.t()
@@ -184,11 +184,11 @@ defmodule ReqVCR.Config do
 
   ## Examples
 
-      iex> ReqVCR.Config.validate()
+      iex> Reqord.Config.validate()
       :ok
 
-      iex> Application.put_env(:req_vcr, :cassette_dir, "/nonexistent/readonly")
-      iex> ReqVCR.Config.validate()
+      iex> Application.put_env(:reqord, :cassette_dir, "/nonexistent/readonly")
+      iex> Reqord.Config.validate()
       {:error, [{:cassette_dir, "Directory /nonexistent/readonly is not writable"}]}
   """
   @spec validate() :: :ok | {:error, [{atom(), String.t()}]}
