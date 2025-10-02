@@ -117,10 +117,19 @@ defmodule ReqVCR.Redactor do
         |> Jason.encode!()
 
       {:error, _} ->
+        # Not valid JSON, return as-is
         body
     end
   rescue
-    _ -> body
+    Jason.EncodeError ->
+      # JSON encoding failed after redaction, return original
+      body
+
+    exception ->
+      # Log unexpected errors but don't crash redaction
+      require Logger
+      Logger.warning("Unexpected error during JSON redaction: #{inspect(exception)}")
+      body
   end
 
   defp redact_json_values(json) when is_map(json) do
