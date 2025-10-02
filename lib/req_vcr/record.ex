@@ -17,16 +17,29 @@ defmodule ReqVCR.Record do
     headers = conn.req_headers
 
     # Make live request (without going through the test stub)
-    # Don't raise on HTTP errors so we can record 4xx/5xx responses
+    # Handle network failures gracefully while allowing 4xx/5xx responses to be recorded
     live_response =
-      Req.new(headers: headers)
-      |> Req.request!(
-        method: method |> String.downcase() |> String.to_atom(),
-        url: url,
-        body: if(body == "", do: nil, else: body),
-        raw: true,
-        retry: false
-      )
+      case Req.new(headers: headers)
+           |> Req.request(
+             method: method |> String.downcase() |> String.to_atom(),
+             url: url,
+             body: if(body == "", do: nil, else: body),
+             raw: true,
+             retry: false
+           ) do
+        {:ok, response} ->
+          response
+
+        {:error, %Req.TransportError{reason: reason} = exception} ->
+          require Logger
+          Logger.error("Network error while recording request to #{url}: #{inspect(reason)}")
+          raise exception
+
+        {:error, exception} ->
+          require Logger
+          Logger.error("Request failed while recording to #{url}: #{inspect(exception)}")
+          raise exception
+      end
 
     # Normalize and redact response
     normalized_resp = normalize_response(live_response)
