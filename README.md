@@ -102,13 +102,6 @@ REQ_VCR=all API_TOKEN=xxx mix test
 REQ_VCR=none mix test
 ```
 
-Legacy mode names still work:
-```bash
-REQ_VCR=replay mix test    # → :once
-REQ_VCR=auto mix test      # → :new_episodes  
-REQ_VCR=record mix test    # → :all
-```
-
 #### Application Config
 
 ```elixir
