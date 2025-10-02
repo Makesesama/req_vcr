@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2025-10-02
+
 ### Added
 - **Pluggable JSON system** - Support for custom JSON libraries via `ReqVCR.JSON` behavior
   - `ReqVCR.JSON.Jason` adapter (default) with runtime availability checks
@@ -110,5 +112,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic redaction of Bearer tokens, API keys, long alphanumeric strings
   - Support for GitHub tokens, Stripe keys, UUIDs, and custom patterns
 
-[Unreleased]: https://github.com/Makesesama/req_vcr/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/Makesesama/req_vcr/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/Makesesama/req_vcr/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Makesesama/req_vcr/releases/tag/v0.1.0
