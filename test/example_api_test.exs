@@ -17,6 +17,7 @@ defmodule Reqord.ExampleAPITest do
   Finally, run tests in replay mode (no network calls):
 
       mix test test/example_api_test.exs
+
   """
 
   use Reqord.Case

@@ -1,0 +1,2 @@
+{"req":{"body_hash":"-","headers":{},"method":"GET","url":"http://localhost:4001/api/old"},"resp":{"body_b64":"b2xkIGRhdGEgMQ==","headers":{},"status":200}}
+{"req":{"body_hash":"-","headers":{},"method":"POST","url":"http://localhost:4001/api/old"},"resp":{"body_b64":"b2xkIGRhdGEgMg==","headers":{},"status":200}}

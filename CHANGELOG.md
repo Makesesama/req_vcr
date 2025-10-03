@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CRITICAL: Multiple requests in :all mode** - Fixed `:all` mode to properly handle multiple requests
+  - In `:all` mode, each request now accumulates and replaces the entire test cassette with all requests
+  - This ensures all requests in a test are recorded while never clearing cassettes from other tests
+  - Each test gets a fresh cassette containing only its requests when using `REQORD=all`
+  - Fixes the issue where running `REQORD=all mix test specific_test.exs` would inappropriately clear cassettes
+
 ## [0.2.1] - 2025-10-03
 
 ### Fixed

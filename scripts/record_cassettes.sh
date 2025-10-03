@@ -26,13 +26,13 @@ else
     exit 1
 fi
 
-# Clear existing cassettes to ensure clean redaction
-echo "Clearing existing cassettes..."
-rm -rf test/support/cassettes/ExampleAPI/
-
 # Record cassettes
 echo "Recording cassettes..."
 REQORD=all mix test test/example_api_test.exs
+
+# Record integration test cassettes
+echo "Recording integration test cassettes..."
+REQORD=all mix test test/reqord/multiple_requests_integration_test.exs --include integration
 
 # Stop the API server
 echo "Stopping API server..."

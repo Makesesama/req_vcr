@@ -15,9 +15,7 @@ defmodule ReqordTest do
     # Clean up unit test cassettes after each test (but preserve ExampleAPI and fixtures)
     on_exit(fn ->
       File.ls!(@cassette_dir)
-      |> Enum.reject(&(&1 == "ExampleAPI"))
-      # Keep permanent test fixtures
-      |> Enum.reject(&(&1 == "fixtures"))
+      |> Enum.reject(&(&1 in ["ExampleAPI", "fixtures"]))
       |> Enum.each(fn file ->
         File.rm!(Path.join(@cassette_dir, file))
       end)
@@ -333,12 +331,9 @@ defmodule ReqordTest do
         mode: :all
       )
 
-      # Note: In :all mode, we can't actually test re-recording in unit tests
-      # because record_request tries to make a real network call.
-      # This test verifies that :all mode exists and the cassette is loaded.
-      # Full :all mode behavior requires integration testing with real network.
-
-      # Verify the cassette exists with 1 entry
+      # In :all mode, the cassette is cleared when the first request is made
+      # The cassette still exists after install! but will be cleared on first request
+      # Verify the cassette exists with the old entry
       entries =
         cassette_path
         |> File.read!()
@@ -347,6 +342,9 @@ defmodule ReqordTest do
 
       assert length(entries) == 1
       assert Base.decode64!(hd(entries)["resp"]["body_b64"]) == "old"
+
+      # Note: Full :all mode behavior requires integration testing with real network
+      # because record_request tries to make a real network call.
     end
 
     test "mode :none - never records, never hits network" do

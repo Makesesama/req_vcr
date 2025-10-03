@@ -77,15 +77,18 @@ defmodule Reqord.Record do
       # Handle different record modes
       case mode do
         :all ->
-          # In :all mode, always replace the entire cassette (Ruby VCR behavior)
-          Cassette.replace(cassette_path, entry)
+          # In :all mode, accumulate all requests for this test and replace entire cassette
+          # Use process dictionary to track all entries for this cassette in this test
+          entries_key = {:reqord_entries, cassette_path}
+          current_entries = Process.get(entries_key, [])
+          new_entries = current_entries ++ [entry]
+          Process.put(entries_key, new_entries)
 
-        :new_episodes ->
-          # In :new_episodes mode, always append
-          Cassette.append(cassette_path, entry)
+          # Replace the entire cassette with all accumulated entries
+          write_all_entries_to_cassette(cassette_path, new_entries)
 
         _ ->
-          # Default to append for other modes
+          # All other modes append to cassette
           Cassette.append(cassette_path, entry)
       end
     else
@@ -138,5 +141,19 @@ defmodule Reqord.Record do
     Enum.reduce(headers, conn, fn {key, value}, acc ->
       Plug.Conn.put_resp_header(acc, key, value)
     end)
+  end
+
+  defp write_all_entries_to_cassette(cassette_path, entries) do
+    # Ensure directory exists
+    cassette_path |> Path.dirname() |> File.mkdir_p!()
+
+    # Write all entries to the cassette file, replacing any existing content
+    content =
+      Enum.map_join(entries, "\n", fn entry ->
+        entry_map = CassetteEntry.to_map(entry)
+        Reqord.JSON.encode!(entry_map)
+      end)
+
+    File.write!(cassette_path, content <> "\n")
   end
 end

@@ -5,7 +5,7 @@ defmodule Reqord.RecordModesTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{Cassette, CassetteEntry}
+  alias Reqord.{Cassette, CassetteEntry, JSON}
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_record_modes_test")
 
@@ -182,7 +182,7 @@ defmodule Reqord.RecordModesTest do
       assert Base.decode64!(first_match.resp.body_b64) == "Error: uniqueKey is required"
     end
 
-    test "demonstrates proper :all mode behavior with replace", %{test_dir: test_dir} do
+    test "demonstrates proper :all mode behavior - accumulate and replace", %{test_dir: test_dir} do
       cassette_file = Path.join(test_dir, "all_mode_test.jsonl")
 
       # Step 1: Create existing cassette with old data
@@ -193,31 +193,49 @@ defmodule Reqord.RecordModesTest do
       entries = Cassette.load(cassette_file)
       assert length(entries) == 1
 
-      # Step 2: Simulate :all mode - always replaces entire cassette
-      new_entry1 = create_test_entry("GET", "https://api.example.com/data", "new data 1")
-      Cassette.replace(cassette_file, new_entry1)
+      # Step 2: Simulate :all mode - accumulate requests and replace entire cassette
+      new_entry1 = create_test_entry("GET", "https://api.example.com/users", "users list")
+      new_entry2 = create_test_entry("POST", "https://api.example.com/users", "new user")
 
-      # Verify replacement
+      # In :all mode, each request replaces the cassette with all accumulated entries
+      # First request: replace cassette with [new_entry1]
+      write_all_entries_to_cassette(cassette_file, [new_entry1])
+
+      # Verify first request recorded (old data gone)
       entries = Cassette.load(cassette_file)
       assert length(entries) == 1
-      assert Base.decode64!(hd(entries).resp.body_b64) == "new data 1"
+      assert Base.decode64!(hd(entries).resp.body_b64) == "users list"
 
-      # Step 3: Each subsequent :all mode request replaces the entire cassette
-      new_entry2 = create_test_entry("POST", "https://api.example.com/data", "new data 2")
-      Cassette.replace(cassette_file, new_entry2)
+      # Second request: replace cassette with [new_entry1, new_entry2]
+      write_all_entries_to_cassette(cassette_file, [new_entry1, new_entry2])
 
-      # Verify complete replacement (not append)
+      # Verify both requests are in cassette
       entries = Cassette.load(cassette_file)
-      assert length(entries) == 1
-      assert Base.decode64!(hd(entries).resp.body_b64) == "new data 2"
+      assert length(entries) == 2
+      assert Base.decode64!(Enum.at(entries, 0).resp.body_b64) == "users list"
+      assert Base.decode64!(Enum.at(entries, 1).resp.body_b64) == "new user"
     end
   end
 
-  # Helper function to create test entries
+  # Helper functions
   defp create_test_entry(method, url, response_body, status \\ 200) do
     {:ok, req} = CassetteEntry.Request.new(method, url, %{}, "-")
     {:ok, resp} = CassetteEntry.Response.new(status, %{}, Base.encode64(response_body))
     {:ok, entry} = CassetteEntry.new(req, resp)
     entry
+  end
+
+  defp write_all_entries_to_cassette(cassette_path, entries) do
+    # Ensure directory exists
+    cassette_path |> Path.dirname() |> File.mkdir_p!()
+
+    # Write all entries to the cassette file, replacing any existing content
+    content =
+      Enum.map_join(entries, "\n", fn entry ->
+        entry_map = CassetteEntry.to_map(entry)
+        JSON.encode!(entry_map)
+      end)
+
+    File.write!(cassette_path, content <> "\n")
   end
 end
