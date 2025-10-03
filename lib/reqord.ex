@@ -225,7 +225,7 @@ defmodule Reqord do
 
   require Logger
 
-  alias Reqord.{Cassette, CassetteEntry, Record, Replay, Config}
+  alias Reqord.{Cassette, CassetteEntry, Config, Record, Replay}
 
   @type mode :: :once | :new_episodes | :all | :none
   @type matcher :: :method | :uri | :host | :path | :headers | :body | atom()
@@ -407,36 +407,30 @@ defmodule Reqord do
     url = build_url(conn)
     body = Req.Test.raw_body(conn)
 
-    # Try to find matching entry using flexible matchers
-    case {find_matching_entry(entries, conn, match_on), mode} do
-      # Found entry - replay it (all modes)
-      {{:ok, _entry}, :all} ->
-        # Mode :all always re-records, so skip existing entry
-        Record.record_request(conn, name, cassette_path, method, url, body)
+    # Handle request based on mode - following Ruby VCR behavior
+    case mode do
+      :all ->
+        # Always record, never replay (Ruby VCR behavior)
+        Record.record_request(conn, name, cassette_path, method, url, body, :all)
 
-      {{:ok, entry}, _} ->
-        # Replay existing entry for all other modes
+      :none ->
+        handle_none_mode(conn, entries, match_on, method, url, body, cassette_path)
+
+      :once ->
+        handle_once_mode(conn, entries, match_on, method, url, body, cassette_path)
+
+      :new_episodes ->
+        handle_new_episodes_mode(conn, name, cassette_path, method, url, body, entries, match_on)
+    end
+  end
+
+  defp handle_none_mode(conn, entries, match_on, method, url, body, cassette_path) do
+    # Never record, only replay
+    case find_matching_entry(entries, conn, match_on) do
+      {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
-      # Not found - behavior depends on mode
-      {:not_found, :once} ->
-        # Strict mode - raise error
-        raise CassetteMissError,
-          method: method,
-          url: url,
-          body_hash: compute_body_hash(method, body),
-          cassette: cassette_path
-
-      {:not_found, :new_episodes} ->
-        # Append mode - record new request
-        Record.record_request(conn, name, cassette_path, method, url, body)
-
-      {:not_found, :all} ->
-        # Always record mode - record new request
-        Record.record_request(conn, name, cassette_path, method, url, body)
-
-      {:not_found, :none} ->
-        # Never record mode - raise error
+      :not_found ->
         raise CassetteMissError,
           method: method,
           url: url,
@@ -445,9 +439,39 @@ defmodule Reqord do
     end
   end
 
+  defp handle_once_mode(conn, entries, match_on, method, url, body, cassette_path) do
+    # Record once, then replay
+    case find_matching_entry(entries, conn, match_on) do
+      {:ok, entry} ->
+        Replay.replay_response(conn, entry)
+
+      :not_found ->
+        raise CassetteMissError,
+          method: method,
+          url: url,
+          body_hash: compute_body_hash(method, body),
+          cassette: cassette_path
+    end
+  end
+
+  defp handle_new_episodes_mode(conn, name, cassette_path, method, url, body, entries, match_on) do
+    # Replay if found, record if not found
+    case find_matching_entry(entries, conn, match_on) do
+      {:ok, entry} ->
+        Replay.replay_response(conn, entry)
+
+      :not_found ->
+        Record.record_request(conn, name, cassette_path, method, url, body, :new_episodes)
+    end
+  end
+
   # Find matching entry using flexible matchers
+  # Uses "last match wins" strategy to handle appended cassettes correctly
   defp find_matching_entry(entries, conn, match_on) do
-    case Enum.find(entries, &matches_request?(&1, conn, match_on)) do
+    # Find all matching entries and take the last one (most recent)
+    matching_entries = Enum.filter(entries, &matches_request?(&1, conn, match_on))
+
+    case List.last(matching_entries) do
       nil -> :not_found
       entry -> {:ok, entry}
     end

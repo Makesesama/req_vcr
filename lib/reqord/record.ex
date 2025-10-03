@@ -3,14 +3,31 @@ defmodule Reqord.Record do
   Handles recording HTTP requests to cassettes.
   """
 
-  alias Reqord.{Cassette, CassetteEntry, Redactor, Config}
+  alias Reqord.{Cassette, CassetteEntry, Config, Redactor}
 
   @doc """
   Records a live HTTP request to a cassette.
   """
   @spec record_request(Plug.Conn.t(), atom(), String.t(), String.t(), String.t(), String.t()) ::
           Plug.Conn.t()
-  def record_request(conn, _name, cassette_path, method, url, body) do
+  def record_request(conn, name, cassette_path, method, url, body) do
+    record_request(conn, name, cassette_path, method, url, body, :new_episodes)
+  end
+
+  @doc """
+  Records a live HTTP request to a cassette with specific mode.
+  """
+  @spec record_request(
+          Plug.Conn.t(),
+          atom(),
+          String.t(),
+          String.t(),
+          String.t(),
+          String.t(),
+          atom()
+        ) ::
+          Plug.Conn.t()
+  def record_request(conn, _name, cassette_path, method, url, body, mode) do
     # Forward headers from the original request
     headers = conn.req_headers
 
@@ -57,8 +74,20 @@ defmodule Reqord.Record do
              normalized_resp[:body_b64]
            ),
          {:ok, entry} <- CassetteEntry.new(req, resp) do
-      # Append to cassette
-      Cassette.append(cassette_path, entry)
+      # Handle different record modes
+      case mode do
+        :all ->
+          # In :all mode, always replace the entire cassette (Ruby VCR behavior)
+          Cassette.replace(cassette_path, entry)
+
+        :new_episodes ->
+          # In :new_episodes mode, always append
+          Cassette.append(cassette_path, entry)
+
+        _ ->
+          # Default to append for other modes
+          Cassette.append(cassette_path, entry)
+      end
     else
       {:error, reason} ->
         require Logger

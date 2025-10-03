@@ -66,6 +66,30 @@ defmodule Reqord.Cassette do
   end
 
   @doc """
+  Replaces the contents of a cassette file with a single entry.
+
+  This is used for :all mode where the cassette should be completely rewritten.
+  Creates the directory structure if it doesn't exist.
+
+  ## Examples
+
+      Reqord.Cassette.replace("test/cassettes/example.jsonl", entry)
+  """
+  @spec replace(cassette_path(), CassetteEntry.t()) :: :ok
+  def replace(path, entry) do
+    # Ensure directory exists
+    path
+    |> Path.dirname()
+    |> File.mkdir_p!()
+
+    # Convert struct to map and encode
+    entry_map = CassetteEntry.to_map(entry)
+    encoded_entry = Reqord.JSON.encode!(entry_map)
+    File.write!(path, encoded_entry <> "\n")
+    :ok
+  end
+
+  @doc """
   Validates that a raw map can be converted to a CassetteEntry.
 
   Returns `{:ok, entry}` if valid, `{:error, reason}` if invalid.
