@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2025-10-03
+
+### Fixed
+- **CRITICAL: Record mode behavior** - Fixed `:all` mode to follow Ruby VCR behavior
+  - `:all` mode now always replaces the entire cassette (instead of appending)
+  - This fixes the critical issue where rerecording would mix old broken requests with new fixed ones
+  - Simplified implementation by removing complex session tracking in favor of Ruby VCR's straightforward approach
+  - `:all` mode now never replays - always goes live and records fresh responses
+  - Ensures that `REQORD=all` provides clean, predictable cassette replacement behavior
+- **Code quality** - Fixed all test warnings and Credo issues
+  - Resolved unused variable warnings in test files
+  - Fixed alias ordering and unused alias warnings
+  - Refactored complex functions to reduce cyclomatic complexity
+  - Improved code readability and maintainability
+
+### Added
+- **Comprehensive test coverage** - Extensive edge case testing across all modules
+  - Redactor tests for extreme token lengths (1-10000 characters) and boundary cases
+  - URL normalization edge cases including malformed URLs and unicode handling
+  - Base64 encoding/decoding stress tests with large data and concurrent operations
+  - Cassette file format edge cases (mixed line endings, BOM markers, malformed JSON)
+  - HTTP request/response validation for unusual methods and status codes
+  - Record mode integration tests simulating real-world broken→fixed workflows
+  - Last-match-wins replay strategy tests for handling mixed cassette scenarios
+  - Large file handling and concurrent access patterns
+  - Memory and performance considerations for encoding operations
+- **Documentation improvements** - Added hex package badges to README
+
+### Changed
+- **Simplified architecture** - Removed Session module complexity
+  - Eliminated Agent-based session tracking that was causing confusion
+  - Record logic now follows simple Ruby VCR patterns without stateful tracking
+  - Cleaner, more predictable behavior that matches developer expectations
+  - Reduced cognitive overhead for understanding and debugging record modes
+
 ## [0.2.0] - 2025-10-02
 
 ### Added
@@ -112,6 +147,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Automatic redaction of Bearer tokens, API keys, long alphanumeric strings
   - Support for GitHub tokens, Stripe keys, UUIDs, and custom patterns
 
-[Unreleased]: https://github.com/Makesesama/reqord/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/Makesesama/reqord/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/Makesesama/reqord/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/Makesesama/reqord/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/Makesesama/reqord/releases/tag/v0.1.0
