@@ -1,4 +1,11 @@
+[hex-img]: http://img.shields.io/hexpm/v/reqord.svg
+
+[hexdocs-img]: http://img.shields.io/badge/hexdocs-documentation-brightgreen.svg
+
 # Reqord
+
+[![Hex.pm Version][hex-img]](https://hex.pm/packages/reqord)
+[![waffle documentation][hexdocs-img]](https://hexdocs.pm/reqord)
 
 VCR-style HTTP recording and replay for Elixir's [Req](https://hexdocs.pm/req) library, with zero application code changes required.
 
