@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **CRITICAL: Concurrent request recording in :all mode** - Fixed issue where HTTP requests made from spawned processes weren't being recorded
+  - Problem: Reqord used process dictionary to accumulate requests in `:all` mode, but spawned processes (Task.async, etc.) don't inherit parent's process dictionary
+  - Solution: Replaced process dictionary with GenServer-based state management following ExVCR's proven architecture pattern
+  - Impact: Concurrent HTTP requests from Task.async and other spawned processes are now properly recorded in `:all` mode
+  - Scope: Only affects `:all` mode - other modes (`:once`, `:new_episodes`, `:none`) unchanged and working correctly
+  - Added `Reqord.CassetteState` GenServer module for cross-process state management
+  - Added `Reqord.cleanup/1` function for proper state cleanup after tests
+  - Maintains full backward compatibility with existing functionality
+
 ## [0.2.2] - 2025-10-03
 
 ### Fixed

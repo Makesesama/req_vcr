@@ -225,7 +225,7 @@ defmodule Reqord do
 
   require Logger
 
-  alias Reqord.{Cassette, CassetteEntry, Config, Record, Replay}
+  alias Reqord.{Cassette, CassetteEntry, CassetteState, Config, Record, Replay}
 
   @type mode :: :once | :new_episodes | :all | :none
   @type matcher :: :method | :uri | :host | :path | :headers | :body | atom()
@@ -370,6 +370,13 @@ defmodule Reqord do
 
     cassette_path = cassette_path(cassette)
 
+    # Initialize cassette state for :all mode
+    if mode == :all do
+      # Clear any existing state and start fresh
+      CassetteState.clear_entries(cassette_path)
+      # Note: The actual cassette file will be cleared on first request, not here
+    end
+
     # Install a catch-all stub that handles all requests
     Req.Test.stub(name, fn conn ->
       # Reload entries on each request for :all mode to see newly recorded entries
@@ -397,6 +404,24 @@ defmodule Reqord do
   @spec allow(atom(), pid(), pid()) :: :ok
   def allow(name, owner_pid, allowed_pid) do
     Req.Test.allow(name, owner_pid, allowed_pid)
+  end
+
+  @doc """
+  Cleans up cassette state for a given cassette.
+
+  This is useful for cleaning up global state after tests complete,
+  especially when using :all mode with concurrent requests.
+
+  ## Examples
+
+      on_exit(fn ->
+        Reqord.cleanup("my_cassette")
+      end)
+  """
+  @spec cleanup(String.t()) :: :ok
+  def cleanup(cassette) do
+    cassette_path = cassette_path(cassette)
+    CassetteState.stop_for_cassette(cassette_path)
   end
 
   # Private functions

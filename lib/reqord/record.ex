@@ -3,7 +3,7 @@ defmodule Reqord.Record do
   Handles recording HTTP requests to cassettes.
   """
 
-  alias Reqord.{Cassette, CassetteEntry, Config, Redactor}
+  alias Reqord.{Cassette, CassetteEntry, CassetteState, Config, Redactor}
 
   @doc """
   Records a live HTTP request to a cassette.
@@ -28,38 +28,47 @@ defmodule Reqord.Record do
         ) ::
           Plug.Conn.t()
   def record_request(conn, _name, cassette_path, method, url, body, mode) do
-    # Forward headers from the original request
     headers = conn.req_headers
 
-    # Make live request (without going through the test stub)
-    # Handle network failures gracefully while allowing 4xx/5xx responses to be recorded
-    live_response =
-      case Req.new(headers: headers)
-           |> Req.request(
-             method: method |> String.downcase() |> String.to_atom(),
-             url: url,
-             body: if(body == "", do: nil, else: body),
-             raw: true,
-             retry: false
-           ) do
-        {:ok, response} ->
-          response
-
-        {:error, %Req.TransportError{reason: reason} = exception} ->
-          require Logger
-          Logger.error("Network error while recording request to #{url}: #{inspect(reason)}")
-          raise exception
-
-        {:error, exception} ->
-          require Logger
-          Logger.error("Request failed while recording to #{url}: #{inspect(exception)}")
-          raise exception
-      end
-
-    # Normalize and redact response
+    # Make live request and handle the response
+    live_response = make_live_request(headers, method, url, body)
     normalized_resp = normalize_response(live_response)
 
-    # Build cassette entry using structs
+    # Create and store cassette entry
+    entry = create_cassette_entry(method, url, headers, body, normalized_resp)
+    store_cassette_entry(entry, cassette_path, mode)
+
+    # Return the response
+    build_response(conn, live_response, normalized_resp)
+  end
+
+  # Private helper functions
+
+  defp make_live_request(headers, method, url, body) do
+    case Req.new(headers: headers)
+         |> Req.request(
+           method: method |> String.downcase() |> String.to_atom(),
+           url: url,
+           body: if(body == "", do: nil, else: body),
+           raw: true,
+           retry: false
+         ) do
+      {:ok, response} ->
+        response
+
+      {:error, %Req.TransportError{reason: reason} = exception} ->
+        require Logger
+        Logger.error("Network error while recording request to #{url}: #{inspect(reason)}")
+        raise exception
+
+      {:error, exception} ->
+        require Logger
+        Logger.error("Request failed while recording to #{url}: #{inspect(exception)}")
+        raise exception
+    end
+  end
+
+  defp create_cassette_entry(method, url, headers, body, normalized_resp) do
     with {:ok, req} <-
            CassetteEntry.Request.new(
              method,
@@ -74,31 +83,44 @@ defmodule Reqord.Record do
              normalized_resp[:body_b64]
            ),
          {:ok, entry} <- CassetteEntry.new(req, resp) do
-      # Handle different record modes
-      case mode do
-        :all ->
-          # In :all mode, accumulate all requests for this test and replace entire cassette
-          # Use process dictionary to track all entries for this cassette in this test
-          entries_key = {:reqord_entries, cassette_path}
-          current_entries = Process.get(entries_key, [])
-          new_entries = current_entries ++ [entry]
-          Process.put(entries_key, new_entries)
-
-          # Replace the entire cassette with all accumulated entries
-          write_all_entries_to_cassette(cassette_path, new_entries)
-
-        _ ->
-          # All other modes append to cassette
-          Cassette.append(cassette_path, entry)
-      end
+      entry
     else
       {:error, reason} ->
         require Logger
         Logger.error("Failed to create cassette entry: #{reason}")
         raise "Cassette entry creation failed: #{reason}"
     end
+  end
 
-    # Return the response
+  defp store_cassette_entry(entry, cassette_path, mode) do
+    case mode do
+      :all ->
+        handle_all_mode_storage(entry, cassette_path)
+
+      _ ->
+        # All other modes append to cassette
+        Cassette.append(cassette_path, entry)
+    end
+  end
+
+  defp handle_all_mode_storage(entry, cassette_path) do
+    # Check if this is the first request by seeing if GenServer state is empty
+    current_entries_before = CassetteState.get_entries(cassette_path)
+    is_first_request = Enum.empty?(current_entries_before)
+
+    # If this is the first request, clear the existing cassette file
+    if is_first_request && File.exists?(cassette_path) do
+      File.rm!(cassette_path)
+    end
+
+    CassetteState.append_entry(cassette_path, entry)
+    current_entries = CassetteState.get_entries(cassette_path)
+
+    # Replace the entire cassette with all accumulated entries
+    write_all_entries_to_cassette(cassette_path, current_entries)
+  end
+
+  defp build_response(conn, live_response, normalized_resp) do
     conn
     |> Plug.Conn.put_status(live_response.status)
     |> put_headers(normalized_resp[:headers])

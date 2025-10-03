@@ -10,10 +10,8 @@ defmodule Reqord.JSONLTest do
     # Clean up temporary test files, but preserve fixtures and ExampleAPI
     on_exit(fn ->
       File.ls!(@cassette_dir)
-      # Keep permanent test fixtures
-      |> Enum.reject(&(&1 == "fixtures"))
-      # Keep ExampleAPI cassettes
-      |> Enum.reject(&(&1 == "ExampleAPI"))
+      # Keep permanent test fixtures and ExampleAPI cassettes
+      |> Enum.reject(&(&1 in ["fixtures", "ExampleAPI"]))
       |> Enum.each(fn file ->
         file_path = Path.join(@cassette_dir, file)
 
@@ -80,7 +78,7 @@ defmodule Reqord.JSONLTest do
         resp: %{
           status: 201,
           headers: %{"content-type" => "application/json"},
-          body_b64: Base.encode64("{\"result\":\"success\"}")
+          body_b64: Base.encode64(~s({"result":"success"}))
         }
       }
 
