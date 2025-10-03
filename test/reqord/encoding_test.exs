@@ -7,7 +7,7 @@ defmodule Reqord.EncodingTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{CassetteEntry, Record, Replay}
+  alias Reqord.CassetteEntry
 
   describe "Base64 encoding edge cases" do
     test "handles empty response bodies" do
@@ -251,7 +251,7 @@ defmodule Reqord.EncodingTest do
 
       # Measure memory before
       :erlang.garbage_collect()
-      {memory_before, _} = :erlang.process_info(self(), :memory)
+      {_memory_before, _} = :erlang.process_info(self(), :memory)
 
       # Encode
       encoded = Base.encode64(large_data)
@@ -264,9 +264,9 @@ defmodule Reqord.EncodingTest do
       assert decoded == large_data
 
       # Clean up
-      large_data = nil
-      encoded = nil
-      decoded = nil
+      _large_data = nil
+      _encoded = nil
+      _decoded = nil
       :erlang.garbage_collect()
     end
 

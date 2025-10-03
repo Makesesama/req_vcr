@@ -90,7 +90,7 @@ defmodule Reqord.RecordModesTest do
 
       # Test the find_matching_entry logic directly
       # This is internal logic, but critical for this fix
-      conn = %Plug.Conn{
+      _conn = %Plug.Conn{
         method: "GET",
         host: "api.example.com",
         request_path: "/users",
