@@ -31,7 +31,7 @@ Add `reqord` to your list of dependencies in `mix.exs`:
 def deps do
   [
     {:req, "~> 0.5"},
-    {:reqord, "~> 0.2.2"},
+    {:reqord, "~> 0.3.0"},
     {:jason, "~> 1.4"}  # Required for default JSON adapter
   ]
 end

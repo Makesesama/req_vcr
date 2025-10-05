@@ -1,7 +1,7 @@
 defmodule Reqord.MixProject do
   use Mix.Project
 
-  @version "0.2.2"
+  @version "0.3.0"
   @source_url "https://github.com/Makesesama/reqord"
 
   def project do
