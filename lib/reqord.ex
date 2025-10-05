@@ -303,6 +303,30 @@ defmodule Reqord do
     end
   end
 
+  defmodule SequenceMismatchError do
+    defexception [:message, :expected_entry, :actual_request, :cassette, :position]
+
+    @impl true
+    def message(%{
+          expected_entry: entry,
+          actual_request: request,
+          cassette: cassette,
+          position: position
+        }) do
+      """
+      Sequential cassette mismatch at position #{position}:
+
+      Expected: #{entry.req.method} #{entry.req.url}
+      Actual:   #{request.method} #{request.url}
+      Cassette: #{cassette}
+
+      Requests must be replayed in the exact order they were recorded.
+      To re-record in the correct order, run:
+        REQORD=all mix test
+      """
+    end
+  end
+
   @doc """
   Installs a VCR stub that handles cassette replay and recording.
 
@@ -375,7 +399,6 @@ defmodule Reqord do
     cassette = Keyword.fetch!(opts, :cassette)
     mode = Keyword.get(opts, :mode, :once)
     match_on = Keyword.get(opts, :match_on, [:method, :uri])
-    sequential_replay = Keyword.get(opts, :sequential_replay, false)
 
     cassette_path = cassette_path(cassette)
 
@@ -384,11 +407,6 @@ defmodule Reqord do
       # Clear any existing state and start fresh
       CassetteState.clear_entries(cassette_path)
       # Note: The actual cassette file will be cleared on first request, not here
-    end
-
-    # Enable sequential matching if requested
-    if sequential_replay do
-      :persistent_term.put({:reqord_sequential, cassette_path}, true)
     end
 
     # Install a catch-all stub that handles all requests
@@ -468,7 +486,7 @@ defmodule Reqord do
 
   defp handle_none_mode(conn, entries, match_on, method, url, body, cassette_path) do
     # Never record, only replay
-    case find_matching_entry(entries, conn, match_on, cassette_path) do
+    case get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -478,12 +496,15 @@ defmodule Reqord do
           url: url,
           body_hash: compute_body_hash(method, body),
           cassette: cassette_path
+
+      {:mismatch, entry} ->
+        raise_mismatch_error(conn, entry, method, url, body, cassette_path)
     end
   end
 
   defp handle_once_mode(conn, entries, match_on, method, url, body, cassette_path) do
     # Record once, then replay
-    case find_matching_entry(entries, conn, match_on, cassette_path) do
+    case get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -493,79 +514,79 @@ defmodule Reqord do
           url: url,
           body_hash: compute_body_hash(method, body),
           cassette: cassette_path
+
+      {:mismatch, entry} ->
+        raise_mismatch_error(conn, entry, method, url, body, cassette_path)
     end
   end
 
   defp handle_new_episodes_mode(conn, name, cassette_path, method, url, body, entries, match_on) do
     # Replay if found, record if not found
-    case find_matching_entry(entries, conn, match_on, cassette_path) do
+    case get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
       :not_found ->
         Record.record_request(conn, name, cassette_path, method, url, body, :new_episodes)
+
+      {:mismatch, entry} ->
+        raise_mismatch_error(conn, entry, method, url, body, cassette_path)
     end
   end
 
-  # Find matching entry with optional sequential matching for lifecycle replay
-  defp find_matching_entry(entries, conn, match_on, cassette_path) do
-    # Check if sequential matching is enabled for this cassette
-    sequential_enabled? = :persistent_term.get({:reqord_sequential, cassette_path}, false)
-
-    if sequential_enabled? do
-      find_matching_entry_sequential(entries, conn, match_on, cassette_path)
-    else
-      find_matching_entry_last_wins(entries, conn, match_on)
-    end
-  end
-
-  # Sequential matching: finds the first matching entry from current position onwards
-  defp find_matching_entry_sequential(entries, conn, match_on, cassette_path) do
+  # Get next entry in sequence and verify it matches the current request
+  # Pure sequential streaming - no searching, just take next entry and verify
+  defp get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
     current_position = CassetteState.get_replay_position(cassette_path)
 
-    # Get entries from current position onwards
-    remaining_entries = Enum.drop(entries, current_position)
-
-    # Find the first matching entry from remaining entries
-    case Enum.find_index(remaining_entries, &matches_request?(&1, conn, match_on)) do
+    case Enum.at(entries, current_position) do
       nil ->
+        # No more entries available
         :not_found
 
-      relative_index ->
-        # Advance position to the found entry + 1
-        new_position = current_position + relative_index + 1
-        advance_replay_position_to(cassette_path, new_position)
-
-        # Return the matched entry
-        entry = Enum.at(remaining_entries, relative_index)
-        {:ok, entry}
-    end
-  end
-
-  # Default behavior: "last match wins" (preserves existing behavior)
-  defp find_matching_entry_last_wins(entries, conn, match_on) do
-    # Find all matching entries and take the last one (most recent)
-    matching_entries = Enum.filter(entries, &matches_request?(&1, conn, match_on))
-
-    case List.last(matching_entries) do
-      nil -> :not_found
-      entry -> {:ok, entry}
-    end
-  end
-
-  # Helper function to set replay position to specific value
-  defp advance_replay_position_to(cassette_path, new_position) do
-    current_position = CassetteState.get_replay_position(cassette_path)
-    times_to_advance = new_position - current_position
-
-    if times_to_advance > 0 do
-      for _ <- 1..times_to_advance do
+      entry ->
+        # Always advance position since we consumed this entry
         CassetteState.advance_replay_position(cassette_path)
-      end
+
+        # Verify the entry matches the current request
+        if matches_request?(entry, conn, match_on) do
+          {:ok, entry}
+        else
+          # Request doesn't match expected entry - this is an error
+          {:mismatch, entry}
+        end
     end
+  end
+
+  # Helper to raise a sequence mismatch error
+  defp raise_mismatch_error(_conn, entry, method, url, body, cassette_path) do
+    # Get current position (already advanced, so subtract 1 to get position of mismatched entry)
+    position = CassetteState.get_replay_position(cassette_path) - 1
+
+    actual_request = %{
+      method: method,
+      url: url,
+      body_hash: compute_body_hash(method, body)
+    }
+
+    raise SequenceMismatchError,
+      expected_entry: entry,
+      actual_request: actual_request,
+      cassette: cassette_path,
+      position: position
   end
 
   # Check if an entry matches the request based on the given matchers
+  # Optimized fast path for the most common case: [:method, :uri]
+  defp matches_request?(%CassetteEntry{req: req}, conn, [:method, :uri]) do
+    # Inline the two most common matchers for maximum performance
+    method = conn.method |> to_string() |> String.upcase()
+    url = build_url(conn)
+    normalized_url = normalize_url(url)
+
+    method == req.method && normalized_url == normalize_url(req.url)
+  end
+
   defp matches_request?(entry, conn, matchers) do
     Enum.all?(matchers, fn matcher ->
       apply_matcher(matcher, conn, entry)

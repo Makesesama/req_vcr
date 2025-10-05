@@ -695,8 +695,8 @@ defmodule ReqordTest do
 
       client = Req.new(plug: {Req.Test, @test_stub})
 
-      # Should raise cassette miss because matcher returns false
-      assert_raise Reqord.CassetteMissError, fn ->
+      # Should raise sequence mismatch because matcher returns false
+      assert_raise Reqord.SequenceMismatchError, fn ->
         Req.get!(client, url: "https://api.example.com/data")
       end
     end

@@ -98,7 +98,6 @@ defmodule Reqord.Case do
         mode = vcr_mode(context)
         cassette_name = cassette_name(context)
         match_on = context[:match_on] || Application.get_env(:reqord, :match_on, [:method, :uri])
-        sequential_replay = context[:sequential_replay] || false
 
         # Set up Req.Test in private mode
         Req.Test.set_req_test_to_private()
@@ -109,8 +108,7 @@ defmodule Reqord.Case do
           name: stub_name,
           cassette: cassette_name,
           mode: mode,
-          match_on: match_on,
-          sequential_replay: sequential_replay
+          match_on: match_on
         )
 
         # Ensure cassette is flushed on test exit
