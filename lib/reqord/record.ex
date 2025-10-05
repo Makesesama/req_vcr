@@ -3,7 +3,7 @@ defmodule Reqord.Record do
   Handles recording HTTP requests to cassettes.
   """
 
-  alias Reqord.{CassetteEntry, CassetteState, CassetteWriter, Config, Redactor}
+  alias Reqord.{CassetteEntry, CassetteState, Config, Redactor}
 
   @doc """
   Records a live HTTP request to a cassette.
@@ -58,12 +58,12 @@ defmodule Reqord.Record do
 
       {:error, %Req.TransportError{reason: reason} = exception} ->
         require Logger
-        Logger.error("Network error while recording request to #{url}: #{inspect(reason)}")
+        Logger.debug("Network error while recording request to #{url}: #{inspect(reason)}")
         raise exception
 
       {:error, exception} ->
         require Logger
-        Logger.error("Request failed while recording to #{url}: #{inspect(exception)}")
+        Logger.debug("Request failed while recording to #{url}: #{inspect(exception)}")
         raise exception
     end
   end

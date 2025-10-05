@@ -375,6 +375,7 @@ defmodule Reqord do
     cassette = Keyword.fetch!(opts, :cassette)
     mode = Keyword.get(opts, :mode, :once)
     match_on = Keyword.get(opts, :match_on, [:method, :uri])
+    sequential_replay = Keyword.get(opts, :sequential_replay, false)
 
     cassette_path = cassette_path(cassette)
 
@@ -383,6 +384,11 @@ defmodule Reqord do
       # Clear any existing state and start fresh
       CassetteState.clear_entries(cassette_path)
       # Note: The actual cassette file will be cleared on first request, not here
+    end
+
+    # Enable sequential matching if requested
+    if sequential_replay do
+      :persistent_term.put({:reqord_sequential, cassette_path}, true)
     end
 
     # Install a catch-all stub that handles all requests
@@ -462,7 +468,7 @@ defmodule Reqord do
 
   defp handle_none_mode(conn, entries, match_on, method, url, body, cassette_path) do
     # Never record, only replay
-    case find_matching_entry(entries, conn, match_on) do
+    case find_matching_entry(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -477,7 +483,7 @@ defmodule Reqord do
 
   defp handle_once_mode(conn, entries, match_on, method, url, body, cassette_path) do
     # Record once, then replay
-    case find_matching_entry(entries, conn, match_on) do
+    case find_matching_entry(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -492,7 +498,7 @@ defmodule Reqord do
 
   defp handle_new_episodes_mode(conn, name, cassette_path, method, url, body, entries, match_on) do
     # Replay if found, record if not found
-    case find_matching_entry(entries, conn, match_on) do
+    case find_matching_entry(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -501,15 +507,61 @@ defmodule Reqord do
     end
   end
 
-  # Find matching entry using flexible matchers
-  # Uses "last match wins" strategy to handle appended cassettes correctly
-  defp find_matching_entry(entries, conn, match_on) do
+  # Find matching entry with optional sequential matching for lifecycle replay
+  defp find_matching_entry(entries, conn, match_on, cassette_path) do
+    # Check if sequential matching is enabled for this cassette
+    sequential_enabled? = :persistent_term.get({:reqord_sequential, cassette_path}, false)
+
+    if sequential_enabled? do
+      find_matching_entry_sequential(entries, conn, match_on, cassette_path)
+    else
+      find_matching_entry_last_wins(entries, conn, match_on)
+    end
+  end
+
+  # Sequential matching: finds the first matching entry from current position onwards
+  defp find_matching_entry_sequential(entries, conn, match_on, cassette_path) do
+    current_position = CassetteState.get_replay_position(cassette_path)
+
+    # Get entries from current position onwards
+    remaining_entries = Enum.drop(entries, current_position)
+
+    # Find the first matching entry from remaining entries
+    case Enum.find_index(remaining_entries, &matches_request?(&1, conn, match_on)) do
+      nil ->
+        :not_found
+
+      relative_index ->
+        # Advance position to the found entry + 1
+        new_position = current_position + relative_index + 1
+        advance_replay_position_to(cassette_path, new_position)
+
+        # Return the matched entry
+        entry = Enum.at(remaining_entries, relative_index)
+        {:ok, entry}
+    end
+  end
+
+  # Default behavior: "last match wins" (preserves existing behavior)
+  defp find_matching_entry_last_wins(entries, conn, match_on) do
     # Find all matching entries and take the last one (most recent)
     matching_entries = Enum.filter(entries, &matches_request?(&1, conn, match_on))
 
     case List.last(matching_entries) do
       nil -> :not_found
       entry -> {:ok, entry}
+    end
+  end
+
+  # Helper function to set replay position to specific value
+  defp advance_replay_position_to(cassette_path, new_position) do
+    current_position = CassetteState.get_replay_position(cassette_path)
+    times_to_advance = new_position - current_position
+
+    if times_to_advance > 0 do
+      for _ <- 1..times_to_advance do
+        CassetteState.advance_replay_position(cassette_path)
+      end
     end
   end
 

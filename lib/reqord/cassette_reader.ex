@@ -46,6 +46,9 @@ defmodule Reqord.CassetteReader do
   @doc """
   Load all entries from a cassette file, sorted by timestamp.
 
+  Uses streaming for memory efficiency during parsing, then sorts in memory.
+  For very large cassettes, consider using `stream_entries/2` if you don't need sorting.
+
   ## Parameters
     - `cassette_path` - Path to the cassette file
     - `storage_backend` - Storage backend module (defaults to FileSystem)
@@ -56,10 +59,7 @@ defmodule Reqord.CassetteReader do
   def load_entries(cassette_path, storage_backend \\ Reqord.Storage.FileSystem) do
     cassette_path
     |> storage_backend.read_entries()
-    |> Stream.map(&parse_entry/1)
-    |> Stream.reject(&is_nil/1)
-    |> Enum.to_list()
-    |> sort_by_timestamp()
+    |> stream_parse_and_sort()
   end
 
   @doc """
@@ -96,7 +96,13 @@ defmodule Reqord.CassetteReader do
 
   defp parse_entry(_), do: nil
 
-  defp sort_by_timestamp(entries) do
-    Enum.sort_by(entries, & &1.recorded_at)
+  # Optimized streaming parse and sort
+  defp stream_parse_and_sort(raw_entries_stream) do
+    # For better memory efficiency, we can use a streaming approach
+    # that parses entries lazily but still needs to collect for sorting
+    raw_entries_stream
+    |> Stream.map(&parse_entry/1)
+    |> Stream.reject(&is_nil/1)
+    |> Enum.sort_by(& &1.recorded_at)
   end
 end

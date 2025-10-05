@@ -16,8 +16,14 @@ defmodule ReqordTest do
     on_exit(fn ->
       File.ls!(@cassette_dir)
       |> Enum.reject(&(&1 in ["ExampleAPI", "fixtures"]))
-      |> Enum.each(fn file ->
-        File.rm!(Path.join(@cassette_dir, file))
+      |> Enum.each(fn file_or_dir ->
+        path = Path.join(@cassette_dir, file_or_dir)
+
+        if File.dir?(path) do
+          File.rm_rf!(path)
+        else
+          File.rm!(path)
+        end
       end)
     end)
 

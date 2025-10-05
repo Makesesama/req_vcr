@@ -15,7 +15,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
   """
 
   use Reqord.Case
-  alias Reqord.{CassetteEntry, CassetteReader, CassetteWriter, JSON}
+  alias Reqord.{CassetteEntry, CassetteReader, CassetteWriter, JSON, TestHelpers}
 
   @moduletag :integration
 
@@ -29,19 +29,15 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     # Make multiple different requests to ensure they're all recorded
 
     # Request 1: GET all users
-    client =
-      Req.new(
-        plug: {Req.Test, Reqord.MultipleRequestsIntegrationStub},
-        headers: [{"authorization", "Bearer test-token"}]
-      )
+    client = TestHelpers.test_api_client()
 
-    {:ok, resp1} = Req.get(client, url: "#{@test_api_url}/api/users")
+    {:ok, resp1} = Req.get(client, url: "/api/users")
     assert resp1.status == 200
     assert is_list(resp1.body)
     assert length(resp1.body) == 2
 
     # Request 2: GET specific user
-    {:ok, resp2} = Req.get(client, url: "#{@test_api_url}/api/users/1")
+    {:ok, resp2} = Req.get(client, url: "/api/users/1")
     assert resp2.status == 200
     assert resp2.body["id"] == 1
     assert resp2.body["name"] == "Alice"
@@ -49,7 +45,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     # Request 3: POST new user
     {:ok, resp3} =
       Req.post(client,
-        url: "#{@test_api_url}/api/users",
+        url: "/api/users",
         json: %{name: "Charlie", email: "charlie@example.com"}
       )
 
@@ -58,7 +54,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     assert resp3.body["name"] == "Charlie"
 
     # Request 4: GET another specific user
-    {:ok, resp4} = Req.get(client, url: "#{@test_api_url}/api/users/2")
+    {:ok, resp4} = Req.get(client, url: "/api/users/2")
     assert resp4.status == 200
     assert resp4.body["id"] == 2
     assert resp4.body["name"] == "Bob"

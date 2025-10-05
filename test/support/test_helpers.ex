@@ -81,4 +81,31 @@ defmodule Reqord.TestHelpers do
       with_config(app, key, value, test_function)
     end)
   end
+
+  @doc """
+  Test API client fixture for integration tests.
+
+  Returns a Req client pre-configured with authentication headers and base URL
+  for the test_api server.
+
+  ## Examples
+
+      test "get user" do
+        client = TestHelpers.test_api_client()
+        {:ok, resp} = Req.get(client, url: "/api/users/1")
+        assert resp.status == 200
+      end
+
+      test "create user" do
+        client = TestHelpers.test_api_client()
+        {:ok, resp} = Req.post(client, url: "/api/users", json: %{name: "Alice"})
+        assert resp.status == 201
+      end
+  """
+  def test_api_client do
+    Req.new(
+      base_url: "http://localhost:4001",
+      headers: [{"authorization", "Bearer test-token"}]
+    )
+  end
 end

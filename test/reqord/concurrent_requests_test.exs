@@ -25,7 +25,7 @@ defmodule Reqord.ConcurrentRequestsTest do
   end
 
   test "process dictionary isolation demonstrates the bug", %{test_dir: test_dir} do
-    cassette_path = Path.join(test_dir, "process_dict_bug.jsonl")
+    _cassette_path = Path.join(test_dir, "process_dict_bug.jsonl")
 
     # Demonstrate the issue: spawned processes don't inherit process dictionary
     parent_pid = self()
@@ -194,8 +194,8 @@ defmodule Reqord.ConcurrentRequestsTest do
     # This assertion will likely fail with current implementation
     # demonstrating the bug
     if length(post_entries) < 3 do
-      IO.puts("BUG REPRODUCED: Only #{length(post_entries)} POST entries found, expected 3")
-      IO.puts("This demonstrates the concurrent request recording issue")
+      # Bug reproduced: Only #{length(post_entries)} POST entries found, expected 3
+      # This demonstrates the concurrent request recording issue
     end
 
     assert length(delete_entries) == 3

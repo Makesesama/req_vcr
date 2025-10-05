@@ -21,19 +21,16 @@ defmodule Reqord.ExampleAPITest do
   """
 
   use Reqord.Case
+  alias Reqord.TestHelpers
 
   @moduletag :example_api
 
   defp default_stub_name, do: Reqord.ExampleAPIStub
 
   test "fetches list of users with authentication" do
-    client =
-      Req.new(
-        plug: {Req.Test, Reqord.ExampleAPIStub},
-        headers: [{"authorization", "Bearer test-token"}]
-      )
+    client = TestHelpers.test_api_client()
 
-    {:ok, response} = Req.get(client, url: "http://localhost:4001/api/users")
+    {:ok, response} = Req.get(client, url: "/api/users")
 
     assert response.status == 200
     assert is_list(response.body)
@@ -46,13 +43,9 @@ defmodule Reqord.ExampleAPITest do
   end
 
   test "fetches a single user" do
-    client =
-      Req.new(
-        plug: {Req.Test, Reqord.ExampleAPIStub},
-        headers: [{"authorization", "Bearer test-token"}]
-      )
+    client = TestHelpers.test_api_client()
 
-    {:ok, response} = Req.get(client, url: "http://localhost:4001/api/users/1")
+    {:ok, response} = Req.get(client, url: "/api/users/1")
 
     assert response.status == 200
     assert response.body["id"] == 1
@@ -61,15 +54,11 @@ defmodule Reqord.ExampleAPITest do
   end
 
   test "creates a new user" do
-    client =
-      Req.new(
-        plug: {Req.Test, Reqord.ExampleAPIStub},
-        headers: [{"authorization", "Bearer test-token"}]
-      )
+    client = TestHelpers.test_api_client()
 
     {:ok, response} =
       Req.post(client,
-        url: "http://localhost:4001/api/users",
+        url: "/api/users",
         json: %{name: "Charlie", email: "charlie@example.com"}
       )
 
@@ -80,9 +69,10 @@ defmodule Reqord.ExampleAPITest do
   end
 
   test "returns 401 without authentication" do
-    client = Req.new(plug: {Req.Test, Reqord.ExampleAPIStub})
+    # Create client without auth headers
+    client = Req.new(base_url: "http://localhost:4001")
 
-    {:ok, response} = Req.get(client, url: "http://localhost:4001/api/users")
+    {:ok, response} = Req.get(client, url: "/api/users")
 
     assert response.status == 401
     assert response.body["error"] == "Unauthorized"

@@ -1,3 +1,0 @@
-{"recorded_at":1000,"req":{"body_hash":"6039092F70864B935E614EAF0FF41BCB91357E8E746997F9AF55F5B9F7F8F684","headers":{"content-type":"application/json"},"method":"POST","url":"/new"},"resp":{"body_b64":"bmV3MQ==","headers":{"content-type":"application/json"},"status":201}}
-{"recorded_at":2000,"req":{"body_hash":"D504F01608B7A8B04349A9CCF4630F4917E67CC4EB6803DA31ED503E04A00C68","headers":{"content-type":"application/json"},"method":"POST","url":"/new"},"resp":{"body_b64":"bmV3Mg==","headers":{"content-type":"application/json"},"status":201}}
-{"req":{"body_hash":"-","headers":{},"method":"GET","url":"/legacy"},"resp":{"body_b64":"bGVnYWN5IHJlc3BvbnNl","headers":{},"status":200}}
