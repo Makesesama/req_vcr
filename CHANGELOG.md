@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **🚀 NEW ARCHITECTURE: Timestamp-based chronological ordering** - Complete redesign to solve request ordering issues
+- **NEW ARCHITECTURE: Timestamp-based chronological ordering** - Complete redesign to solve request ordering issues
   - **Microsecond precision timestamps** - All cassette entries now include `recorded_at` field with microsecond timestamps
   - **Async CassetteWriter GenServer** - Non-blocking writes with batching and automatic timestamp sorting
   - **Streaming CassetteReader** - Memory-efficient reading with chronological ordering by timestamp
@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **FileSystem Storage Backend** - Optimized JSONL file operations with atomic writes and streaming reads
   - **Application Supervision** - CassetteWriter automatically starts with Reqord application
   - **Enhanced Test Flushing** - Automatic cassette flushing on test completion via `Reqord.cleanup/1`
+- **Pure Sequential Streaming** - Revolutionary performance improvement for cassette replay
+  - **No search operations** - Direct O(1) access instead of O(n) searching through entries
+  - **Sequential verification** - Takes next entry and verifies match instead of searching for matches
+  - **Optimized common case** - Fast path for default `[:method, :uri]` matching used in 90%+ of cases
 
 ### Fixed
 - **CRITICAL: POST-DELETE lifecycle ordering** - Solved concurrent request recording order issues
@@ -30,23 +34,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Scope: Only affects `:all` mode - other modes (`:once`, `:new_episodes`, `:none`) unchanged and working correctly
 
 ### Changed
-- **⚠️ BREAKING: Cassette format change** - All cassettes now require timestamps
+- **BREAKING: Cassette format change** - All cassettes now require timestamps
   - **Migration Required**: Existing cassettes without timestamps will not load
   - **Solution**: Regenerate all cassettes using `REQORD=all mix test`
   - **Benefit**: Enables chronological replay ordering and future extensibility
-- **⚠️ BREAKING: Removed legacy timestamp compatibility** - Clean implementation without backward compatibility
+- **BREAKING: Removed legacy timestamp compatibility** - Clean implementation without backward compatibility
   - No automatic timestamp addition for legacy entries
   - Simplified codebase with consistent timestamp requirements
   - Better error messages for invalid cassette entries
+- **BREAKING: Sequential replay is now the only strategy** - Removed complex dual matching approaches
+  - **Eliminated**: Search-based "last match wins" strategy that was slower and more error-prone
+  - **Unified**: Single sequential streaming approach for all scenarios
+  - **Improved**: Better error messages with `SequenceMismatchError` showing exact position and expected vs actual requests
+  - **Simplified**: Much cleaner codebase with reduced cognitive overhead
 
 ### Removed
 - **Legacy cassette support** - No longer supports cassettes without timestamps for cleaner architecture
+- **Search-based matching** - Removed complex search algorithms in favor of simple sequential access
+- **Duplicate code** - Eliminated duplicate `put_headers` functions across modules
 
 ### Performance
+- **MAJOR: O(1) cassette replay** - Eliminated O(n) search operations for massive performance improvement on large cassettes
 - **Async writes** - Non-blocking cassette writes during test execution
 - **Streaming operations** - Memory-efficient reading for large cassette files
 - **Batched I/O** - Reduced file system operations through intelligent batching
 - **Timestamp sorting** - Automatic chronological ordering without manual intervention
+- **Optimized matching** - Inlined fast path for most common matching scenarios
 
 ## [0.2.2] - 2025-10-03
 
