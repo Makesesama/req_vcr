@@ -225,7 +225,15 @@ defmodule Reqord do
 
   require Logger
 
-  alias Reqord.{Cassette, CassetteEntry, CassetteState, Config, Record, Replay}
+  alias Reqord.{
+    CassetteEntry,
+    CassetteReader,
+    CassetteState,
+    CassetteWriter,
+    Config,
+    Record,
+    Replay
+  }
 
   @type mode :: :once | :new_episodes | :all | :none
   @type matcher :: :method | :uri | :host | :path | :headers | :body | atom()
@@ -291,6 +299,30 @@ defmodule Reqord do
 
       Or use auto mode to record on misses:
         REQORD=auto mix test
+      """
+    end
+  end
+
+  defmodule SequenceMismatchError do
+    defexception [:message, :expected_entry, :actual_request, :cassette, :position]
+
+    @impl true
+    def message(%{
+          expected_entry: entry,
+          actual_request: request,
+          cassette: cassette,
+          position: position
+        }) do
+      """
+      Sequential cassette mismatch at position #{position}:
+
+      Expected: #{entry.req.method} #{entry.req.url}
+      Actual:   #{request.method} #{request.url}
+      Cassette: #{cassette}
+
+      Requests must be replayed in the exact order they were recorded.
+      To re-record in the correct order, run:
+        REQORD=all mix test
       """
     end
   end
@@ -380,7 +412,8 @@ defmodule Reqord do
     # Install a catch-all stub that handles all requests
     Req.Test.stub(name, fn conn ->
       # Reload entries on each request for :all mode to see newly recorded entries
-      entries = Cassette.load(cassette_path)
+      storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
+      entries = CassetteReader.load_entries(cassette_path, storage_backend)
 
       handle_request(conn, name, cassette_path, entries, mode, match_on)
     end)
@@ -421,6 +454,8 @@ defmodule Reqord do
   @spec cleanup(String.t()) :: :ok
   def cleanup(cassette) do
     cassette_path = cassette_path(cassette)
+    # Flush any pending writes for this cassette
+    CassetteWriter.flush_cassette(cassette_path)
     CassetteState.stop_for_cassette(cassette_path)
   end
 
@@ -451,7 +486,7 @@ defmodule Reqord do
 
   defp handle_none_mode(conn, entries, match_on, method, url, body, cassette_path) do
     # Never record, only replay
-    case find_matching_entry(entries, conn, match_on) do
+    case get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -461,12 +496,15 @@ defmodule Reqord do
           url: url,
           body_hash: compute_body_hash(method, body),
           cassette: cassette_path
+
+      {:mismatch, entry} ->
+        raise_mismatch_error(conn, entry, method, url, body, cassette_path)
     end
   end
 
   defp handle_once_mode(conn, entries, match_on, method, url, body, cassette_path) do
     # Record once, then replay
-    case find_matching_entry(entries, conn, match_on) do
+    case get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
@@ -476,33 +514,79 @@ defmodule Reqord do
           url: url,
           body_hash: compute_body_hash(method, body),
           cassette: cassette_path
+
+      {:mismatch, entry} ->
+        raise_mismatch_error(conn, entry, method, url, body, cassette_path)
     end
   end
 
   defp handle_new_episodes_mode(conn, name, cassette_path, method, url, body, entries, match_on) do
     # Replay if found, record if not found
-    case find_matching_entry(entries, conn, match_on) do
+    case get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
       {:ok, entry} ->
         Replay.replay_response(conn, entry)
 
       :not_found ->
         Record.record_request(conn, name, cassette_path, method, url, body, :new_episodes)
+
+      {:mismatch, entry} ->
+        raise_mismatch_error(conn, entry, method, url, body, cassette_path)
     end
   end
 
-  # Find matching entry using flexible matchers
-  # Uses "last match wins" strategy to handle appended cassettes correctly
-  defp find_matching_entry(entries, conn, match_on) do
-    # Find all matching entries and take the last one (most recent)
-    matching_entries = Enum.filter(entries, &matches_request?(&1, conn, match_on))
+  # Get next entry in sequence and verify it matches the current request
+  # Pure sequential streaming - no searching, just take next entry and verify
+  defp get_next_entry_and_verify(entries, conn, match_on, cassette_path) do
+    current_position = CassetteState.get_replay_position(cassette_path)
 
-    case List.last(matching_entries) do
-      nil -> :not_found
-      entry -> {:ok, entry}
+    case Enum.at(entries, current_position) do
+      nil ->
+        # No more entries available
+        :not_found
+
+      entry ->
+        # Always advance position since we consumed this entry
+        CassetteState.advance_replay_position(cassette_path)
+
+        # Verify the entry matches the current request
+        if matches_request?(entry, conn, match_on) do
+          {:ok, entry}
+        else
+          # Request doesn't match expected entry - this is an error
+          {:mismatch, entry}
+        end
     end
+  end
+
+  # Helper to raise a sequence mismatch error
+  defp raise_mismatch_error(_conn, entry, method, url, body, cassette_path) do
+    # Get current position (already advanced, so subtract 1 to get position of mismatched entry)
+    position = CassetteState.get_replay_position(cassette_path) - 1
+
+    actual_request = %{
+      method: method,
+      url: url,
+      body_hash: compute_body_hash(method, body)
+    }
+
+    raise SequenceMismatchError,
+      expected_entry: entry,
+      actual_request: actual_request,
+      cassette: cassette_path,
+      position: position
   end
 
   # Check if an entry matches the request based on the given matchers
+  # Optimized fast path for the most common case: [:method, :uri]
+  defp matches_request?(%CassetteEntry{req: req}, conn, [:method, :uri]) do
+    # Inline the two most common matchers for maximum performance
+    method = conn.method |> to_string() |> String.upcase()
+    url = build_url(conn)
+    normalized_url = normalize_url(url)
+
+    method == req.method && normalized_url == normalize_url(req.url)
+  end
+
   defp matches_request?(entry, conn, matchers) do
     Enum.all?(matchers, fn matcher ->
       apply_matcher(matcher, conn, entry)
@@ -619,5 +703,13 @@ defmodule Reqord do
 
   defp cassette_path(name) do
     Config.cassette_path(name)
+  end
+
+  # Shared utility for setting response headers
+  @doc false
+  def put_resp_headers(conn, headers) do
+    Enum.reduce(headers, conn, fn {key, value}, acc ->
+      Plug.Conn.put_resp_header(acc, key, value)
+    end)
   end
 end

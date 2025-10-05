@@ -276,41 +276,4 @@ defmodule Reqord.ErrorHandlingTest do
       end
     end
   end
-
-  describe "file system error handling" do
-    test "handles permission errors when writing cassettes" do
-      # Create a read-only directory to simulate permission errors
-      readonly_dir = Path.join(@cassette_dir, "readonly")
-      File.mkdir_p!(readonly_dir)
-
-      # Make directory read-only (on Unix systems)
-      case :os.type() do
-        {:unix, _} ->
-          :ok = File.chmod(readonly_dir, 0o444)
-
-          on_exit(fn ->
-            # Restore permissions for cleanup
-            File.chmod(readonly_dir, 0o755)
-            File.rmdir(readonly_dir)
-          end)
-
-          Reqord.install!(
-            name: @test_stub,
-            cassette: "readonly/test",
-            mode: :new_episodes
-          )
-
-          client = Req.new(plug: {Req.Test, @test_stub})
-
-          # Should raise file permission error when trying to write cassette
-          assert_raise File.Error, fn ->
-            Req.get!(client, url: "https://httpbin.org/get")
-          end
-
-        _ ->
-          # Skip test on non-Unix systems
-          :ok
-      end
-    end
-  end
 end

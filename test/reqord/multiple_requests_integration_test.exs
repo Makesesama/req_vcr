@@ -15,7 +15,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
   """
 
   use Reqord.Case
-  alias Reqord.{CassetteEntry, JSON}
+  alias Reqord.{CassetteEntry, CassetteReader, CassetteWriter, JSON, TestHelpers}
 
   @moduletag :integration
 
@@ -29,19 +29,15 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     # Make multiple different requests to ensure they're all recorded
 
     # Request 1: GET all users
-    client =
-      Req.new(
-        plug: {Req.Test, Reqord.MultipleRequestsIntegrationStub},
-        headers: [{"authorization", "Bearer test-token"}]
-      )
+    client = TestHelpers.test_api_client()
 
-    {:ok, resp1} = Req.get(client, url: "#{@test_api_url}/api/users")
+    {:ok, resp1} = Req.get(client, url: "/api/users")
     assert resp1.status == 200
     assert is_list(resp1.body)
     assert length(resp1.body) == 2
 
     # Request 2: GET specific user
-    {:ok, resp2} = Req.get(client, url: "#{@test_api_url}/api/users/1")
+    {:ok, resp2} = Req.get(client, url: "/api/users/1")
     assert resp2.status == 200
     assert resp2.body["id"] == 1
     assert resp2.body["name"] == "Alice"
@@ -49,7 +45,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     # Request 3: POST new user
     {:ok, resp3} =
       Req.post(client,
-        url: "#{@test_api_url}/api/users",
+        url: "/api/users",
         json: %{name: "Charlie", email: "charlie@example.com"}
       )
 
@@ -58,7 +54,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     assert resp3.body["name"] == "Charlie"
 
     # Request 4: GET another specific user
-    {:ok, resp4} = Req.get(client, url: "#{@test_api_url}/api/users/2")
+    {:ok, resp4} = Req.get(client, url: "/api/users/2")
     assert resp4.status == 200
     assert resp4.body["id"] == 2
     assert resp4.body["name"] == "Bob"
@@ -67,12 +63,12 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     cassette_path =
       "test/support/cassettes/ExampleAPI/multiple_requests_in_all_mode_are_all_recorded_properly.jsonl"
 
-    # Give the file system a moment to sync
-    Process.sleep(100)
+    # Flush the writer to ensure all entries are written
+    CassetteWriter.flush_cassette(cassette_path)
 
     assert File.exists?(cassette_path), "Cassette file should exist"
 
-    entries = Reqord.Cassette.load(cassette_path)
+    entries = CassetteReader.load_entries(cassette_path)
     assert length(entries) == 4, "All 4 requests should be recorded"
 
     # Verify each request is correctly recorded
@@ -115,7 +111,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
 
     # Verify old cassette exists with exactly 2 entries
     assert File.exists?(cassette_path)
-    old_entries = Reqord.Cassette.load(cassette_path)
+    old_entries = CassetteReader.load_entries(cassette_path)
     assert length(old_entries) == 2
 
     # Now the test runs (simulating rerecording after fixing code)
@@ -142,11 +138,11 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     {:ok, resp3} = Req.get(client, url: "#{@test_api_url}/api/users/1")
     assert resp3.status == 200
 
-    # Give file system time to sync
-    Process.sleep(100)
+    # Flush the writer to ensure all entries are written
+    CassetteWriter.flush_cassette(cassette_path)
 
     # Verify the cassette now has only the new requests (old ones cleared)
-    new_entries = Reqord.Cassette.load(cassette_path)
+    new_entries = CassetteReader.load_entries(cassette_path)
     assert length(new_entries) == 3, "Should have exactly 3 new requests, old ones cleared"
 
     # Verify none of the old entries exist

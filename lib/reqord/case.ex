@@ -111,6 +111,11 @@ defmodule Reqord.Case do
           match_on: match_on
         )
 
+        # Ensure cassette is flushed on test exit
+        ExUnit.Callbacks.on_exit(fn ->
+          Reqord.cleanup(cassette_name)
+        end)
+
         # Verify on exit
         Req.Test.verify_on_exit!(context)
 

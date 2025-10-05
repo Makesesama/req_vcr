@@ -127,7 +127,6 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     assert length(entries) == 6
 
     # Verify the fix worked
-    IO.puts("FIX VERIFIED: All #{length(post_entries)} POST entries recorded correctly!")
 
     # Cleanup
     CassetteState.stop_for_cassette(cassette_path)
@@ -188,13 +187,10 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     Task.await_many(fixed_tasks)
 
     # Compare results
-    broken_entries =
+    _broken_entries =
       if File.exists?(broken_cassette), do: Cassette.load(broken_cassette), else: []
 
     fixed_entries = Cassette.load(fixed_cassette)
-
-    IO.puts("BROKEN APPROACH: #{length(broken_entries)} entries recorded")
-    IO.puts("FIXED APPROACH: #{length(fixed_entries)} entries recorded")
 
     # The fixed approach should record all entries
     assert length(fixed_entries) == 2

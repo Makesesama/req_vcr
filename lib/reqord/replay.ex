@@ -16,13 +16,7 @@ defmodule Reqord.Replay do
     # Build response
     conn
     |> Plug.Conn.put_status(resp.status)
-    |> put_headers(resp.headers)
+    |> Reqord.put_resp_headers(resp.headers)
     |> Plug.Conn.resp(resp.status, body)
-  end
-
-  defp put_headers(conn, headers) do
-    Enum.reduce(headers, conn, fn {key, value}, acc ->
-      Plug.Conn.put_resp_header(acc, key, value)
-    end)
   end
 end

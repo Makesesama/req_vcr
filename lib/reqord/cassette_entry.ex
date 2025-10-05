@@ -1,19 +1,58 @@
 defmodule Reqord.CassetteEntry do
   @moduledoc """
-  Represents a single cassette entry with request and response data.
+  Represents a single cassette entry with request, response, and timestamp data.
 
   This struct provides type safety and validation for cassette entries,
-  ensuring consistency across the application.
+  ensuring consistency across the application. All entries now
+  include microsecond-precision timestamps for chronological ordering.
+
+  ## Structure
+
+  A CassetteEntry contains:
+  - `req`: The HTTP request details (method, URL, headers, body hash)
+  - `resp`: The HTTP response details (status, headers, base64-encoded body)
+  - `recorded_at`: Microsecond timestamp when the request was initiated
+
+  ## Timestamp Ordering
+
+  The `recorded_at` field enables chronological replay even when concurrent
+  requests complete out of order:
+
+      # Concurrent requests might complete as: POST(t=200), DELETE(t=100)
+      # But will be replayed as: DELETE(t=100), POST(t=200)
+
+  This solves ID mismatch errors in concurrent testing scenarios where
+  resource creation and deletion happen in parallel.
+
+  ## JSON Format
+
+  When serialized to cassette files, entries have this format:
+
+      {
+        "req": {
+          "method": "POST",
+          "url": "https://api.example.com/users",
+          "headers": {"authorization": "<REDACTED>"},
+          "body_hash": "abc123..."
+        },
+        "resp": {
+          "status": 201,
+          "headers": {"content-type": "application/json"},
+          "body_b64": "eyJpZCI6MSwidXNlciI6IkFsaWNlIn0="
+        },
+        "recorded_at": 1759657159025077
+      }
   """
 
   @type headers :: %{String.t() => String.t()}
 
   @type t :: %__MODULE__{
           req: __MODULE__.Request.t(),
-          resp: __MODULE__.Response.t()
+          resp: __MODULE__.Response.t(),
+          recorded_at: integer() | nil
         }
 
-  defstruct [:req, :resp]
+  defstruct [:req, :resp, :recorded_at]
 
   defmodule Request do
     @moduledoc """
@@ -134,17 +173,23 @@ defmodule Reqord.CassetteEntry do
       iex> Reqord.CassetteEntry.new(req, resp)
       {:ok, %Reqord.CassetteEntry{...}}
   """
-  @spec new(Request.t(), Response.t()) :: {:ok, t()} | {:error, String.t()}
-  def new(%Request{} = req, %Response{} = resp) do
+  @spec new(Request.t(), Response.t(), integer() | nil) :: {:ok, t()} | {:error, String.t()}
+  def new(req, resp, recorded_at \\ nil)
+
+  def new(%Request{} = req, %Response{} = resp, recorded_at) do
+    # Always use timestamp - either provided or current time
+    timestamp = recorded_at || System.system_time(:microsecond)
+
     entry = %__MODULE__{
       req: req,
-      resp: resp
+      resp: resp,
+      recorded_at: timestamp
     }
 
     {:ok, entry}
   end
 
-  def new(_, _), do: {:error, "Both request and response must be valid structs"}
+  def new(_, _, _), do: {:error, "Both request and response must be valid structs"}
 
   @doc """
   Creates a CassetteEntry from raw data with validation.
@@ -152,10 +197,12 @@ defmodule Reqord.CassetteEntry do
   This is useful when loading from JSON or creating from HTTP data.
   """
   @spec from_raw(map()) :: {:ok, t()} | {:error, String.t()}
-  def from_raw(%{"req" => req_data, "resp" => resp_data}) do
+  def from_raw(%{"req" => req_data, "resp" => resp_data} = data) do
     with {:ok, req} <- create_request_from_raw(req_data),
          {:ok, resp} <- create_response_from_raw(resp_data) do
-      new(req, resp)
+      # Support backward compatibility - use nil if timestamp not present
+      recorded_at = Map.get(data, "recorded_at")
+      new(req, resp, recorded_at)
     end
   end
 
@@ -165,7 +212,7 @@ defmodule Reqord.CassetteEntry do
   Converts a CassetteEntry to a map suitable for JSON encoding.
   """
   @spec to_map(t()) :: map()
-  def to_map(%__MODULE__{req: req, resp: resp}) do
+  def to_map(%__MODULE__{req: req, resp: resp, recorded_at: recorded_at}) do
     %{
       "req" => %{
         "method" => req.method,
@@ -177,7 +224,8 @@ defmodule Reqord.CassetteEntry do
         "status" => resp.status,
         "headers" => resp.headers,
         "body_b64" => resp.body_b64
-      }
+      },
+      "recorded_at" => recorded_at
     }
   end
 
@@ -187,7 +235,8 @@ defmodule Reqord.CassetteEntry do
   @spec validate(t()) :: {:ok, t()} | {:error, String.t()}
   def validate(%__MODULE__{req: %Request{}, resp: %Response{}} = entry) do
     with :ok <- validate_request(entry.req),
-         :ok <- validate_response(entry.resp) do
+         :ok <- validate_response(entry.resp),
+         :ok <- validate_timestamp(entry.recorded_at) do
       {:ok, entry}
     end
   end
@@ -251,4 +300,7 @@ defmodule Reqord.CassetteEntry do
   end
 
   defp validate_response(_), do: {:error, "Invalid response structure"}
+
+  defp validate_timestamp(timestamp) when is_integer(timestamp) and timestamp > 0, do: :ok
+  defp validate_timestamp(_), do: {:error, "Invalid or missing timestamp"}
 end

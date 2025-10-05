@@ -14,11 +14,14 @@ Reqord integrates seamlessly with `Req.Test` to automatically record HTTP intera
 ## Features
 
 - **Zero app code changes** - Works entirely through `Req.Test` integration
-- **Three modes** - Replay (default), Record, and Auto (record on miss)
+- **Chronological ordering** - Timestamp-based replay ensures requests play back in correct order
+- **Async performance** - Non-blocking cassette writes with automatic batching
+- **Four modes** - Replay (default), Record, Auto (record on miss), and All (re-record)
 - **Smart matching** - Requests matched by method, normalized URL, and body hash
 - **Automatic redaction** - Auth headers and query params are automatically redacted
 - **Concurrent tests** - Full support for async ExUnit tests with private ownership
 - **Spawned processes** - Easy allowance API for Tasks and spawned processes
+- **Pluggable storage** - Extensible storage backend system for future S3/Redis support
 
 ## Installation
 
@@ -286,6 +289,56 @@ test "with mixed stubs" do
   # Replayed from cassette or recorded
 end
 ```
+
+## New Architecture: Timestamp-Based Ordering
+
+Reqord now includes a completely redesigned architecture that solves concurrent request ordering issues through microsecond-precision timestamps.
+
+### Problem Solved
+
+Previously, concurrent requests (like parallel POST-DELETE lifecycles) could be recorded in completion order rather than initiation order, causing replay mismatches:
+
+```elixir
+# Multiple tasks creating and deleting users concurrently
+Task.async(fn ->
+  {:ok, user} = create_user()     # POST recorded when it completes
+  delete_user(user.id)            # DELETE recorded when it completes
+end)
+```
+
+This could result in cassettes with mixed ordering, causing ID mismatches during replay.
+
+### Solution: Chronological Timestamps
+
+Every request now gets a `recorded_at` timestamp when initiated (not when completed):
+
+```json
+{
+  "req": {"method": "POST", "url": "/users", ...},
+  "resp": {"status": 201, ...},
+  "recorded_at": 1759657159025077
+}
+```
+
+During replay, requests are automatically sorted by timestamp to ensure chronological order, regardless of how they were written to the cassette.
+
+### Performance Benefits
+
+- **Async writes**: Non-blocking cassette writes during test execution
+- **Automatic batching**: Intelligent grouping of writes for better I/O performance
+- **Streaming reads**: Memory-efficient reading for large cassette files
+- **Background processing**: CassetteWriter GenServer handles all I/O asynchronously
+
+### Migration Note
+
+⚠️ **Breaking Change**: Cassette format has changed to include timestamps.
+
+**Migration steps:**
+1. Update to the latest version
+2. Regenerate all cassettes: `REQORD=all mix test`
+3. Commit the new timestamped cassettes
+
+Old cassettes without timestamps will not load and must be regenerated.
 
 ## Advanced Configuration
 

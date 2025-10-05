@@ -49,6 +49,36 @@ defmodule Reqord.CassetteState do
   end
 
   @doc """
+  Gets the current replay position for a cassette.
+  Returns 0 if no state exists.
+  """
+  @spec get_replay_position(String.t()) :: non_neg_integer()
+  def get_replay_position(cassette_path) do
+    name = state_name(cassette_path)
+
+    case Process.whereis(name) do
+      nil -> 0
+      _pid -> GenServer.call(name, :get_position)
+    end
+  end
+
+  @doc """
+  Advances the replay position for a cassette.
+  Creates the state if it doesn't exist.
+  """
+  @spec advance_replay_position(String.t()) :: :ok
+  def advance_replay_position(cassette_path) do
+    name = state_name(cassette_path)
+
+    # Ensure GenServer exists
+    unless Process.whereis(name) do
+      start_for_cassette(cassette_path)
+    end
+
+    GenServer.cast(name, :advance_position)
+  end
+
+  @doc """
   Appends a new entry to the cassette state.
   Creates the state if it doesn't exist.
   """
@@ -83,22 +113,34 @@ defmodule Reqord.CassetteState do
 
   @impl true
   def init(_) do
-    {:ok, []}
+    # State is now {entries, replay_position}
+    {:ok, {[], 0}}
   end
 
   @impl true
-  def handle_call(:get, _from, state) do
-    {:reply, state, state}
+  def handle_call(:get, _from, {entries, _position} = state) do
+    {:reply, entries, state}
   end
 
   @impl true
-  def handle_cast({:append, entry}, state) do
-    {:noreply, state ++ [entry]}
+  def handle_call(:get_position, _from, {_entries, position} = state) do
+    {:reply, position, state}
   end
 
   @impl true
-  def handle_cast(:clear, _state) do
-    {:noreply, []}
+  def handle_cast({:append, entry}, {entries, position}) do
+    {:noreply, {entries ++ [entry], position}}
+  end
+
+  @impl true
+  def handle_cast(:clear, {_entries, _position}) do
+    # Reset both entries and position
+    {:noreply, {[], 0}}
+  end
+
+  @impl true
+  def handle_cast(:advance_position, {entries, position}) do
+    {:noreply, {entries, position + 1}}
   end
 
   # Private functions

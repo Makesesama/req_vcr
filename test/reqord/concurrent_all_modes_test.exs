@@ -76,10 +76,6 @@ defmodule Reqord.ConcurrentAllModesTest do
     assert length(get_entries) == 1
     # New concurrent entries
     assert length(post_entries) == 3
-
-    IO.puts(
-      ":new_episodes mode concurrent test: ✅ All #{length(post_entries)} concurrent requests recorded"
-    )
   end
 
   test ":all mode works with concurrent requests (our GenServer fix)", %{test_dir: test_dir} do
@@ -123,10 +119,6 @@ defmodule Reqord.ConcurrentAllModesTest do
 
     assert length(post_entries) == 3
 
-    IO.puts(
-      ":all mode concurrent test: ✅ All #{length(post_entries)} concurrent requests recorded"
-    )
-
     # Cleanup
     CassetteState.stop_for_cassette(cassette_path)
   end
@@ -152,27 +144,10 @@ defmodule Reqord.ConcurrentAllModesTest do
     # :once and :none modes only replay from cassette, they never record
     # So concurrent requests aren't an issue - they just read from the file
     # This test confirms the cassette file operations work correctly
-
-    IO.puts(
-      "Replay modes test: ✅ Cassette operations work correctly (no concurrent recording needed)"
-    )
   end
 
-  test "mode comparison - demonstrating why only :all mode needed the fix", %{test_dir: test_dir} do
-    IO.puts("\n🔍 Mode Behavior Analysis:")
-
-    IO.puts(
-      "  :all mode       - Accumulates ALL requests in memory, then replaces entire cassette"
-    )
-
-    IO.puts("                   ❌ Had concurrent issue (process dictionary isolation)")
-    IO.puts("                   ✅ Now fixed with GenServer")
-    IO.puts("  :new_episodes   - Records individual requests directly to cassette file")
-    IO.puts("                   ✅ No concurrent issue (no accumulation needed)")
-    IO.puts("  :once mode      - Only replays, never records")
-    IO.puts("                   ✅ No concurrent issue (read-only)")
-    IO.puts("  :none mode      - Only replays, never records")
-    IO.puts("                   ✅ No concurrent issue (read-only)")
+  test "mode comparison - demonstrating why only :all mode needed the fix", %{test_dir: _test_dir} do
+    # This test demonstrates the different behavior modes without verbose logging
 
     # This confirms our implementation is correct:
     # - Only :all mode needed the GenServer fix
