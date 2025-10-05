@@ -126,7 +126,7 @@ defmodule Reqord.Record do
   defp build_response(conn, live_response, normalized_resp) do
     conn
     |> Plug.Conn.put_status(live_response.status)
-    |> put_headers(normalized_resp[:headers])
+    |> Reqord.put_resp_headers(normalized_resp[:headers])
     |> Plug.Conn.resp(live_response.status, live_response.body || "")
   end
 
@@ -160,11 +160,5 @@ defmodule Reqord.Record do
     else
       "-"
     end
-  end
-
-  defp put_headers(conn, headers) do
-    Enum.reduce(headers, conn, fn {key, value}, acc ->
-      Plug.Conn.put_resp_header(acc, key, value)
-    end)
   end
 end

@@ -704,4 +704,12 @@ defmodule Reqord do
   defp cassette_path(name) do
     Config.cassette_path(name)
   end
+
+  # Shared utility for setting response headers
+  @doc false
+  def put_resp_headers(conn, headers) do
+    Enum.reduce(headers, conn, fn {key, value}, acc ->
+      Plug.Conn.put_resp_header(acc, key, value)
+    end)
+  end
 end
