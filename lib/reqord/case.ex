@@ -33,16 +33,16 @@ defmodule Reqord.Case do
 
   ### Environment Variable
 
-  - `REQORD=once` - Strict replay, raise on new requests (default)
+  - `REQORD=once` - Strict replay, raise on new requests
   - `REQORD=new_episodes` - Replay existing, record new requests
   - `REQORD=all` - Always hit live network and re-record
-  - `REQORD=none` - Never record, never hit network
+  - `REQORD=none` - Never record, never hit network (default)
 
   ### Application Config
 
   You can also configure the default mode in your config files:
 
-      config :reqord, default_mode: :once
+      config :reqord, default_mode: :none
 
   ### Per-Test Mode
 
@@ -113,7 +113,7 @@ defmodule Reqord.Case do
 
         # Ensure cassette is flushed on test exit
         ExUnit.Callbacks.on_exit(fn ->
-          Reqord.cleanup(cassette_name)
+          Reqord.cleanup(cassette_name, mode)
         end)
 
         # Verify on exit
@@ -146,9 +146,9 @@ defmodule Reqord.Case do
           app_mode = Application.get_env(:reqord, :default_mode) ->
             app_mode
 
-          # 4. Default to :once
+          # 4. Default to :none
           true ->
-            :once
+            :none
         end
       end
 
@@ -159,7 +159,7 @@ defmodule Reqord.Case do
           "new_episodes" -> :new_episodes
           "all" -> :all
           "none" -> :none
-          _ -> :once
+          _ -> :none
         end
       end
 

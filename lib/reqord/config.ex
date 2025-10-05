@@ -29,7 +29,7 @@ defmodule Reqord.Config do
 
   ### Default Record Mode
 
-      config :reqord, :default_mode, :once
+      config :reqord, :default_mode, :none
 
   ### Custom Filters (for additional redaction)
 
@@ -127,16 +127,16 @@ defmodule Reqord.Config do
   @doc """
   Gets the default record mode.
 
-  Defaults to :once if not configured.
+  Defaults to :none if not configured.
 
   ## Examples
 
       iex> Reqord.Config.default_mode()
-      :once
+      :none
   """
   @spec default_mode() :: :once | :new_episodes | :all | :none
   def default_mode do
-    Application.get_env(:reqord, :default_mode, :once)
+    Application.get_env(:reqord, :default_mode, :none)
   end
 
   @doc """

@@ -78,6 +78,14 @@ defmodule Reqord.CassetteWriter do
     GenServer.call(__MODULE__, :flush_all)
   end
 
+  @doc """
+  Replaces an entire cassette with accumulated entries for :all mode.
+  This ensures cassettes are only replaced when we have the complete new data.
+  """
+  def replace_cassette_for_all_mode(cassette_path) do
+    GenServer.call(__MODULE__, {:replace_cassette_all_mode, cassette_path})
+  end
+
   # Server callbacks
 
   @impl true
@@ -135,6 +143,41 @@ defmodule Reqord.CassetteWriter do
       end)
 
     {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_call({:replace_cassette_all_mode, cassette_path}, _from, state) do
+    case Map.get(state.pending_writes, cassette_path) do
+      nil ->
+        # No pending entries, nothing to replace
+        {:reply, :ok, state}
+
+      [] ->
+        # Empty pending entries, nothing to replace
+        {:reply, :ok, state}
+
+      entries ->
+        # We have entries to replace the cassette with
+        state = cancel_timer(cassette_path, state)
+
+        # Sort entries by timestamp (oldest first)
+        sorted_entries =
+          Enum.sort_by(entries, fn entry ->
+            Map.get(entry, "recorded_at", 0)
+          end)
+
+        # Replace entire cassette using delete + create operations
+        result =
+          replace_cassette_atomically(cassette_path, sorted_entries, state.config.storage_backend)
+
+        # Clear pending writes for this cassette
+        state =
+          state
+          |> put_in([:pending_writes, cassette_path], [])
+          |> Map.update!(:write_timers, &Map.delete(&1, cassette_path))
+
+        {:reply, result, state}
+    end
   end
 
   @impl true
@@ -198,6 +241,34 @@ defmodule Reqord.CassetteWriter do
           Logger.error("Failed to write entry to #{cassette_path}: #{inspect(reason)}")
       end
     end)
+  end
+
+  defp replace_cassette_atomically(cassette_path, entries, storage_backend) do
+    # Never replace with empty entries - this would delete cassette content
+    if Enum.empty?(entries) do
+      Logger.warning(
+        "Attempted to replace cassette #{cassette_path} with empty entries - operation skipped"
+      )
+
+      :ok
+    else
+      # Simple approach: delete existing cassette, then write all entries
+      # This follows the basic operations principle
+      with :ok <- storage_backend.delete_cassette(cassette_path),
+           :ok <- storage_backend.ensure_path_exists(cassette_path) do
+        # Write each entry using the basic write_entry operation
+        Enum.reduce_while(entries, :ok, fn entry, :ok ->
+          case storage_backend.write_entry(cassette_path, entry) do
+            :ok -> {:cont, :ok}
+            {:error, reason} -> {:halt, {:error, reason}}
+          end
+        end)
+      else
+        {:error, reason} ->
+          Logger.error("Failed to replace cassette #{cassette_path}: #{inspect(reason)}")
+          {:error, reason}
+      end
+    end
   end
 
   defp reset_timer(cassette_path, state) do

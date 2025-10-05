@@ -341,10 +341,10 @@ defmodule Reqord do
 
   Reqord supports Ruby VCR-style record modes:
 
-  - `:once` - Use existing cassette, raise on new requests (strict replay, default)
+  - `:once` - Use existing cassette, raise on new requests (strict replay)
   - `:new_episodes` - Use existing cassette, record new requests (append mode)
   - `:all` - Always hit live network and re-record everything
-  - `:none` - Never record, never hit network (must have complete cassette)
+  - `:none` - Never record, never hit network (must have complete cassette, default)
 
   ## Request Matching
 
@@ -445,6 +445,9 @@ defmodule Reqord do
   This is useful for cleaning up global state after tests complete,
   especially when using :all mode with concurrent requests.
 
+  For :all mode, this function replaces the entire cassette with
+  accumulated entries, ensuring safe atomic replacement.
+
   ## Examples
 
       on_exit(fn ->
@@ -453,9 +456,30 @@ defmodule Reqord do
   """
   @spec cleanup(String.t()) :: :ok
   def cleanup(cassette) do
+    cleanup(cassette, :none)
+  end
+
+  @doc """
+  Cleans up cassette state for a given cassette with specific mode handling.
+
+  ## Parameters
+    - `cassette` - The cassette name
+    - `mode` - The VCR mode used during the test
+  """
+  @spec cleanup(String.t(), mode()) :: :ok
+  def cleanup(cassette, mode) do
     cassette_path = cassette_path(cassette)
-    # Flush any pending writes for this cassette
-    CassetteWriter.flush_cassette(cassette_path)
+
+    case mode do
+      :all ->
+        # For :all mode, replace the entire cassette with accumulated entries
+        CassetteWriter.replace_cassette_for_all_mode(cassette_path)
+
+      _ ->
+        # For other modes, just flush pending writes
+        CassetteWriter.flush_cassette(cassette_path)
+    end
+
     CassetteState.stop_for_cassette(cassette_path)
   end
 

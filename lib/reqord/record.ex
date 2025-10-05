@@ -106,19 +106,11 @@ defmodule Reqord.Record do
   end
 
   defp handle_all_mode_storage(entry, cassette_path) do
-    # Check if this is the first request by seeing if GenServer state is empty
-    current_entries_before = CassetteState.get_entries(cassette_path)
-    is_first_request = Enum.empty?(current_entries_before)
-
-    # If this is the first request, clear the existing cassette file
-    if is_first_request && File.exists?(cassette_path) do
-      storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
-      storage_backend.delete_cassette(cassette_path)
-    end
-
+    # In :all mode, we accumulate all entries and replace the entire cassette
+    # at the end of the test session. This prevents premature deletion.
     CassetteState.append_entry(cassette_path, entry)
 
-    # Use async writer for better performance
+    # Use async writer to accumulate entries - no premature file operations
     entry_map = CassetteEntry.to_map(entry)
     Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
   end
