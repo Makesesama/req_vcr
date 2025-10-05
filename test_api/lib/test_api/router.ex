@@ -57,6 +57,32 @@ defmodule TestApi.Router do
     end
   end
 
+  delete "/api/users/:id" do
+    with conn <- check_auth(conn, []) do
+      case id do
+        "1" ->
+          conn
+          |> put_resp_content_type("application/json")
+          |> send_resp(200, Jason.encode!(%{message: "User 1 deleted"}))
+
+        "2" ->
+          conn
+          |> put_resp_content_type("application/json")
+          |> send_resp(200, Jason.encode!(%{message: "User 2 deleted"}))
+
+        "3" ->
+          conn
+          |> put_resp_content_type("application/json")
+          |> send_resp(200, Jason.encode!(%{message: "User 3 deleted"}))
+
+        _ ->
+          conn
+          |> put_resp_content_type("application/json")
+          |> send_resp(404, Jason.encode!(%{error: "User not found"}))
+      end
+    end
+  end
+
   match _ do
     conn
     |> put_resp_content_type("application/json")

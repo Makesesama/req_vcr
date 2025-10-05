@@ -7,15 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **🚀 NEW ARCHITECTURE: Timestamp-based chronological ordering** - Complete redesign to solve request ordering issues
+  - **Microsecond precision timestamps** - All cassette entries now include `recorded_at` field with microsecond timestamps
+  - **Async CassetteWriter GenServer** - Non-blocking writes with batching and automatic timestamp sorting
+  - **Streaming CassetteReader** - Memory-efficient reading with chronological ordering by timestamp
+  - **Pluggable Storage Backend** - New `Reqord.Storage.Behavior` interface for future S3/Redis support
+  - **FileSystem Storage Backend** - Optimized JSONL file operations with atomic writes and streaming reads
+  - **Application Supervision** - CassetteWriter automatically starts with Reqord application
+  - **Enhanced Test Flushing** - Automatic cassette flushing on test completion via `Reqord.cleanup/1`
+
 ### Fixed
+- **CRITICAL: POST-DELETE lifecycle ordering** - Solved concurrent request recording order issues
+  - **Problem**: Concurrent requests (e.g., parallel POST-DELETE lifecycles) were recorded in completion order, not initiation order
+  - **Solution**: Timestamp-based recording ensures chronological replay even when requests complete out of order
+  - **Impact**: Eliminates ID mismatch errors in cassette replay for concurrent scenarios
+  - **Example**: POST (user creation) → DELETE (user deletion) lifecycles now maintain correct order during replay
 - **CRITICAL: Concurrent request recording in :all mode** - Fixed issue where HTTP requests made from spawned processes weren't being recorded
   - Problem: Reqord used process dictionary to accumulate requests in `:all` mode, but spawned processes (Task.async, etc.) don't inherit parent's process dictionary
   - Solution: Replaced process dictionary with GenServer-based state management following ExVCR's proven architecture pattern
   - Impact: Concurrent HTTP requests from Task.async and other spawned processes are now properly recorded in `:all` mode
   - Scope: Only affects `:all` mode - other modes (`:once`, `:new_episodes`, `:none`) unchanged and working correctly
-  - Added `Reqord.CassetteState` GenServer module for cross-process state management
-  - Added `Reqord.cleanup/1` function for proper state cleanup after tests
-  - Maintains full backward compatibility with existing functionality
+
+### Changed
+- **⚠️ BREAKING: Cassette format change** - All cassettes now require timestamps
+  - **Migration Required**: Existing cassettes without timestamps will not load
+  - **Solution**: Regenerate all cassettes using `REQORD=all mix test`
+  - **Benefit**: Enables chronological replay ordering and future extensibility
+- **⚠️ BREAKING: Removed legacy timestamp compatibility** - Clean implementation without backward compatibility
+  - No automatic timestamp addition for legacy entries
+  - Simplified codebase with consistent timestamp requirements
+  - Better error messages for invalid cassette entries
+
+### Removed
+- **Legacy cassette support** - No longer supports cassettes without timestamps for cleaner architecture
+
+### Performance
+- **Async writes** - Non-blocking cassette writes during test execution
+- **Streaming operations** - Memory-efficient reading for large cassette files
+- **Batched I/O** - Reduced file system operations through intelligent batching
+- **Timestamp sorting** - Automatic chronological ordering without manual intervention
 
 ## [0.2.2] - 2025-10-03
 

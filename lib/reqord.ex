@@ -225,7 +225,15 @@ defmodule Reqord do
 
   require Logger
 
-  alias Reqord.{Cassette, CassetteEntry, CassetteState, Config, Record, Replay}
+  alias Reqord.{
+    CassetteEntry,
+    CassetteReader,
+    CassetteState,
+    CassetteWriter,
+    Config,
+    Record,
+    Replay
+  }
 
   @type mode :: :once | :new_episodes | :all | :none
   @type matcher :: :method | :uri | :host | :path | :headers | :body | atom()
@@ -380,7 +388,8 @@ defmodule Reqord do
     # Install a catch-all stub that handles all requests
     Req.Test.stub(name, fn conn ->
       # Reload entries on each request for :all mode to see newly recorded entries
-      entries = Cassette.load(cassette_path)
+      storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
+      entries = CassetteReader.load_entries(cassette_path, storage_backend)
 
       handle_request(conn, name, cassette_path, entries, mode, match_on)
     end)
@@ -421,6 +430,8 @@ defmodule Reqord do
   @spec cleanup(String.t()) :: :ok
   def cleanup(cassette) do
     cassette_path = cassette_path(cassette)
+    # Flush any pending writes for this cassette
+    CassetteWriter.flush_cassette(cassette_path)
     CassetteState.stop_for_cassette(cassette_path)
   end
 

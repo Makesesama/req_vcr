@@ -3,7 +3,7 @@ defmodule Reqord.Record do
   Handles recording HTTP requests to cassettes.
   """
 
-  alias Reqord.{Cassette, CassetteEntry, CassetteState, Config, Redactor}
+  alias Reqord.{CassetteEntry, CassetteState, CassetteWriter, Config, Redactor}
 
   @doc """
   Records a live HTTP request to a cassette.
@@ -82,7 +82,8 @@ defmodule Reqord.Record do
              normalized_resp[:headers],
              normalized_resp[:body_b64]
            ),
-         {:ok, entry} <- CassetteEntry.new(req, resp) do
+         # Create entry with timestamp
+         {:ok, entry} <- CassetteEntry.new(req, resp, System.system_time(:microsecond)) do
       entry
     else
       {:error, reason} ->
@@ -98,8 +99,9 @@ defmodule Reqord.Record do
         handle_all_mode_storage(entry, cassette_path)
 
       _ ->
-        # All other modes append to cassette
-        Cassette.append(cassette_path, entry)
+        # Use async writer for better performance
+        entry_map = CassetteEntry.to_map(entry)
+        Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
     end
   end
 
@@ -110,14 +112,15 @@ defmodule Reqord.Record do
 
     # If this is the first request, clear the existing cassette file
     if is_first_request && File.exists?(cassette_path) do
-      File.rm!(cassette_path)
+      storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
+      storage_backend.delete_cassette(cassette_path)
     end
 
     CassetteState.append_entry(cassette_path, entry)
-    current_entries = CassetteState.get_entries(cassette_path)
 
-    # Replace the entire cassette with all accumulated entries
-    write_all_entries_to_cassette(cassette_path, current_entries)
+    # Use async writer for better performance
+    entry_map = CassetteEntry.to_map(entry)
+    Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
   end
 
   defp build_response(conn, live_response, normalized_resp) do
@@ -163,19 +166,5 @@ defmodule Reqord.Record do
     Enum.reduce(headers, conn, fn {key, value}, acc ->
       Plug.Conn.put_resp_header(acc, key, value)
     end)
-  end
-
-  defp write_all_entries_to_cassette(cassette_path, entries) do
-    # Ensure directory exists
-    cassette_path |> Path.dirname() |> File.mkdir_p!()
-
-    # Write all entries to the cassette file, replacing any existing content
-    content =
-      Enum.map_join(entries, "\n", fn entry ->
-        entry_map = CassetteEntry.to_map(entry)
-        Reqord.JSON.encode!(entry_map)
-      end)
-
-    File.write!(cassette_path, content <> "\n")
   end
 end
