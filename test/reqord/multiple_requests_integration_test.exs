@@ -22,9 +22,9 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
   @test_api_port 4001
   @test_api_url "http://localhost:#{@test_api_port}"
 
-  defp default_stub_name, do: Reqord.MultipleRequestsIntegrationStub
+  defp default_stub_name, do: Reqord.ExampleAPIStub
 
-  @tag vcr: "ExampleAPI/multiple_requests_in_all_mode_are_all_recorded_properly"
+  @tag integration: "ExampleAPI/multiple_requests_in_all_mode_are_all_recorded_properly"
   test "multiple requests in :all mode are all recorded properly" do
     # Make multiple different requests to ensure they're all recorded
 
@@ -91,7 +91,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     assert entry4.req.url =~ "/api/users/2"
   end
 
-  @tag vcr:
+  @tag integration:
          "ExampleAPI/rerecording_with_all_mode_clears_old_cassette_and_records_all_new_requests"
   @tag :all_mode_only
   test "rerecording with :all mode clears old cassette and records all new requests" do
@@ -118,11 +118,7 @@ defmodule Reqord.MultipleRequestsIntegrationTest do
     # The :all mode should clear the old cassette and record fresh
 
     # These requests simulate the "fixed" code making correct API calls
-    client =
-      Req.new(
-        plug: {Req.Test, Reqord.MultipleRequestsIntegrationStub},
-        headers: [{"authorization", "Bearer test-token"}]
-      )
+    client = TestHelpers.test_api_client()
 
     {:ok, resp1} = Req.get(client, url: "#{@test_api_url}/api/users")
     assert resp1.status == 200

@@ -104,6 +104,7 @@ defmodule Reqord.TestHelpers do
   """
   def test_api_client do
     Req.new(
+      plug: {Req.Test, Reqord.ExampleAPIStub},
       base_url: "http://localhost:4001",
       headers: [{"authorization", "Bearer test-token"}]
     )

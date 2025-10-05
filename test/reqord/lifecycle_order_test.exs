@@ -14,7 +14,7 @@ defmodule Reqord.LifecycleOrderTest do
 
   defp default_stub_name, do: Reqord.LifecycleOrderStub
 
-  @tag vcr: "LifecycleOrderTest/post_delete_lifecycle_maintains_order"
+  @tag integration: "LifecycleOrderTest/post_delete_lifecycle_maintains_order"
   test "POST-DELETE lifecycle should maintain correct order" do
     # This test simulates a typical create-delete lifecycle
     # where a resource is created with POST and immediately deleted
@@ -83,7 +83,7 @@ defmodule Reqord.LifecycleOrderTest do
     assert entry4.req.url =~ "/api/users/3"
   end
 
-  @tag vcr: "LifecycleOrderTest/concurrent_lifecycles_test"
+  @tag integration: "LifecycleOrderTest/concurrent_lifecycles_test"
   test "concurrent POST-DELETE lifecycles may get mixed up" do
     # This test simulates concurrent requests where multiple lifecycles
     # might interleave, causing order issues

@@ -134,9 +134,9 @@ defmodule Reqord.Case do
       # Get VCR mode from context tag, env var, or app config
       defp vcr_mode(context) do
         cond do
-          # 1. Check for per-test tag override
-          context[:vcr_mode] ->
-            context[:vcr_mode]
+          # 1. Check for per-test tag override (check both :vcr_mode and :integration_mode)
+          context[:vcr_mode] || context[:integration_mode] ->
+            context[:vcr_mode] || context[:integration_mode]
 
           # 2. Check environment variable
           env_mode = System.get_env("REQORD") ->
@@ -165,8 +165,8 @@ defmodule Reqord.Case do
 
       # Generate cassette name from context
       defp cassette_name(context) do
-        # Allow override via tag
-        case context[:vcr] do
+        # Allow override via tag (check both :vcr and :integration for backwards compatibility)
+        case context[:vcr] || context[:integration] do
           name when is_binary(name) ->
             name
 

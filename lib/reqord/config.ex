@@ -178,6 +178,89 @@ defmodule Reqord.Config do
   end
 
   @doc """
+  Get the maximum inline size for response bodies before using external storage.
+
+  ## Examples
+
+      iex> Reqord.Config.max_inline_size()
+      1048576
+
+      iex> Application.put_env(:reqord, :max_inline_size, 2_000_000)
+      iex> Reqord.Config.max_inline_size()
+      2000000
+
+  """
+  @spec max_inline_size() :: pos_integer()
+  def max_inline_size do
+    Application.get_env(:reqord, :max_inline_size, 1_048_576)
+  end
+
+  @doc """
+  Get the object directory for external storage.
+
+  ## Examples
+
+      iex> Reqord.Config.object_directory()
+      "test/support/cassettes/objects"
+
+      iex> Application.put_env(:reqord, :object_directory, "custom/objects")
+      iex> Reqord.Config.object_directory()
+      "custom/objects"
+
+  """
+  @spec object_directory() :: String.t()
+  def object_directory do
+    default_dir = Path.join(cassette_dir(), "objects")
+    Application.get_env(:reqord, :object_directory, default_dir)
+  end
+
+  @doc """
+  Get the binary storage strategy.
+
+  ## Returns
+  - `:inline` - Always store inline as base64
+  - `:external` - Always use external storage for binary content
+  - `:auto` - Automatic based on size threshold (default)
+
+  ## Examples
+
+      iex> Reqord.Config.binary_storage()
+      :auto
+
+      iex> Application.put_env(:reqord, :binary_storage, :external)
+      iex> Reqord.Config.binary_storage()
+      :external
+
+  """
+  @spec binary_storage() :: :inline | :external | :auto
+  def binary_storage do
+    Application.get_env(:reqord, :binary_storage, :auto)
+  end
+
+  @doc """
+  Get the stream replay speed multiplier.
+
+  ## Returns
+  - `0` - Instant replay (default for tests)
+  - `1.0` - Real-time replay
+  - `> 1.0` - Accelerated replay
+
+  ## Examples
+
+      iex> Reqord.Config.stream_speed()
+      0
+
+      iex> Application.put_env(:reqord, :stream_speed, 1.0)
+      iex> Reqord.Config.stream_speed()
+      1.0
+
+  """
+  @spec stream_speed() :: number()
+  def stream_speed do
+    Application.get_env(:reqord, :stream_speed, 0)
+  end
+
+  @doc """
   Validates the current configuration and returns any errors.
 
   Useful for debugging configuration issues.

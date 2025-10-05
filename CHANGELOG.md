@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Object and Streaming Support** - Comprehensive support for binary data and streaming responses
+  - **Smart Content Detection** - Automatic detection of binary vs text content based on Content-Type headers and heuristics
+  - **External Object Storage** - Large binary objects stored externally to prevent JSONL bloat
+  - **Streaming Response Support** - Capture and replay of streaming responses (SSE, chunked transfer)
+  - **Configurable Storage Thresholds** - Control when to use external vs inline storage
+  - **Enhanced CassetteEntry.Response** - New fields for body_encoding, body_external_ref, and stream_metadata
+  - **Pluggable Storage Extensions** - Extended Storage.Behavior with object and stream storage methods
+
+### Changed
+- **Enhanced Response Creation** - New `CassetteEntry.Response.new_with_raw_body/3` for automatic encoding detection
+- **Improved Replay System** - Enhanced body loading with support for external storage and streaming content
+- **Extended Configuration** - New config options for max_inline_size, object_directory, binary_storage, and stream_speed
+
 ## [0.3.0] - 2025-10-05
 
 ### Added

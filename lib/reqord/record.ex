@@ -77,10 +77,10 @@ defmodule Reqord.Record do
              hash_body(method, body)
            ),
          {:ok, resp} <-
-           CassetteEntry.Response.new(
+           CassetteEntry.Response.new_with_raw_body(
              normalized_resp[:status],
              normalized_resp[:headers],
-             normalized_resp[:body_b64]
+             normalized_resp[:raw_body]
            ),
          # Create entry with timestamp
          {:ok, entry} <- CassetteEntry.new(req, resp, System.system_time(:microsecond)) do
@@ -147,10 +147,15 @@ defmodule Reqord.Record do
       end)
       |> Redactor.redact_headers()
 
+    # Keep raw body for smart encoding detection
+    raw_body = Redactor.redact_response_body(response.body || "")
+
     %{
       status: response.status,
       headers: headers,
-      body_b64: Base.encode64(Redactor.redact_response_body(response.body || ""))
+      raw_body: raw_body,
+      # Keep for backward compatibility in case fallback is needed
+      body_b64: Base.encode64(raw_body)
     }
   end
 

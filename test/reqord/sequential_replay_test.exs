@@ -12,10 +12,12 @@ defmodule Reqord.SequentialReplayTest do
 
   @moduletag :integration
 
+  defp default_stub_name, do: Reqord.ExampleAPIStub
+
   # This test demonstrates the sequential replay issue with identical GET requests
   # The test demonstrates GET->GET->GET->GET where some GETs are identical
   # but should return different responses based on their position in the cassette
-  @tag vcr: "SequentialReplayTest/identical_get_requests"
+  @tag integration: "SequentialReplayTest/identical_get_requests"
   test "sequential replay of identical GET requests should return different responses" do
     client = TestHelpers.test_api_client()
 
