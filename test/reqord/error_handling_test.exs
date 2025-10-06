@@ -13,7 +13,7 @@ defmodule Reqord.ErrorHandlingTest do
     Req.Test.set_req_test_from_context(%{async: true})
 
     # Clean up test files after each test
-    test_files = [
+    _test_files = [
       "invalid_json.jsonl",
       "malformed_entries.jsonl",
       "mixed_valid_invalid.jsonl",

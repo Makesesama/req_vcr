@@ -9,7 +9,7 @@ defmodule Reqord.ConcurrentRequestsTest do
 
   use ExUnit.Case
   import Reqord.TestHelpers
-  alias Reqord.{CassetteEntry, CassetteReader, Storage.FileSystem}
+  alias Reqord.{CassetteEntry, CassetteReader}
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_concurrent_test")
 

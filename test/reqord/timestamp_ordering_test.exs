@@ -6,7 +6,7 @@ defmodule Reqord.TimestampOrderingTest do
 
   use ExUnit.Case
   import Reqord.TestHelpers
-  alias Reqord.{CassetteReader, CassetteWriter, Storage.FileSystem}
+  alias Reqord.{CassetteReader, CassetteWriter}
 
   @tag vcr_mode: :all
   test "entries are sorted by timestamp when reading" do

@@ -5,7 +5,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{CassetteReader, Storage.FileSystem}
+  alias Reqord.CassetteReader
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_cassette_edge_test")
 

@@ -14,7 +14,7 @@ defmodule Reqord.JSON.JasonTest do
     Req.Test.set_req_test_from_context(%{async: true})
 
     # Clean up test cassettes after each test
-    test_files = [
+    _test_files = [
       "jason_adapter_basic.jsonl",
       "jason_adapter_complex.jsonl",
       "jason_adapter_integration.jsonl"

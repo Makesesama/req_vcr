@@ -14,7 +14,7 @@ defmodule Reqord.JSON.PoisonTest do
     Req.Test.set_req_test_from_context(%{async: true})
 
     # Clean up test cassettes after each test
-    test_files = [
+    _test_files = [
       "poison_adapter_basic.jsonl",
       "poison_adapter_complex.jsonl",
       "poison_adapter_integration.jsonl"

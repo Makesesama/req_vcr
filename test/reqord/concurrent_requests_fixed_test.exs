@@ -4,7 +4,7 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{CassetteEntry, CassetteReader, CassetteState, Storage.FileSystem}
+  alias Reqord.{CassetteEntry, CassetteReader, CassetteState}
   import Reqord.TestHelpers
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_concurrent_fixed_test")
