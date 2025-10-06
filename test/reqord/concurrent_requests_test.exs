@@ -8,7 +8,8 @@ defmodule Reqord.ConcurrentRequestsTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{Cassette, CassetteEntry}
+  import Reqord.TestHelpers
+  alias Reqord.{CassetteEntry, CassetteReader, Storage.FileSystem}
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_concurrent_test")
 
@@ -18,7 +19,8 @@ defmodule Reqord.ConcurrentRequestsTest do
     File.mkdir_p!(test_dir)
 
     on_exit(fn ->
-      File.rm_rf!(test_dir)
+      nil
+      # Don't delete test directories - cassettes should persist
     end)
 
     %{test_dir: test_dir}
@@ -55,8 +57,10 @@ defmodule Reqord.ConcurrentRequestsTest do
     # because it uses Process.get/put to track cassette entries
   end
 
+  @tag vcr_mode: :all
   test "sequential requests work correctly", %{test_dir: test_dir} do
     cassette_path = Path.join(test_dir, "sequential_test.jsonl")
+    clear_cassette_for_all_mode(cassette_path)
 
     # Simulate the working case - sequential requests in same process
     # Initialize process dictionary like :all mode does
@@ -68,43 +72,43 @@ defmodule Reqord.ConcurrentRequestsTest do
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [entry1]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     # Request 2
     entry2 = create_test_entry("POST", "https://api.example.com/datasets", "dataset 2")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [entry2]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     # Request 3
     entry3 = create_test_entry("POST", "https://api.example.com/datasets", "dataset 3")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [entry3]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     # Cleanup requests
     cleanup1 = create_test_entry("DELETE", "https://api.example.com/datasets/1", "deleted")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [cleanup1]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     cleanup2 = create_test_entry("DELETE", "https://api.example.com/datasets/2", "deleted")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [cleanup2]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     cleanup3 = create_test_entry("DELETE", "https://api.example.com/datasets/3", "deleted")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [cleanup3]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     # Verify all 6 requests are recorded (3 POSTs + 3 DELETEs)
-    entries = Cassette.load(cassette_path)
+    entries = CassetteReader.load_entries(cassette_path)
     assert length(entries) == 6
 
     post_entries = Enum.filter(entries, &(&1.req.method == "POST"))
@@ -114,10 +118,12 @@ defmodule Reqord.ConcurrentRequestsTest do
     assert length(delete_entries) == 3
   end
 
+  @tag vcr_mode: :all
   test "concurrent requests fail with current implementation (demonstrates the bug)", %{
     test_dir: test_dir
   } do
     cassette_path = Path.join(test_dir, "concurrent_bug_demo.jsonl")
+    clear_cassette_for_all_mode(cassette_path)
 
     # Initialize process dictionary in parent process
     entries_key = {:reqord_entries, cassette_path}
@@ -131,7 +137,7 @@ defmodule Reqord.ConcurrentRequestsTest do
         current_entries = Process.get(entries_key, [])
         new_entries = current_entries ++ [entry]
         Process.put(entries_key, new_entries)
-        write_all_entries_to_cassette(cassette_path, new_entries)
+        write_all_entries_for_all_mode(cassette_path, new_entries)
         :ok
       end),
       Task.async(fn ->
@@ -140,7 +146,7 @@ defmodule Reqord.ConcurrentRequestsTest do
         current_entries = Process.get(entries_key, [])
         new_entries = current_entries ++ [entry]
         Process.put(entries_key, new_entries)
-        write_all_entries_to_cassette(cassette_path, new_entries)
+        write_all_entries_for_all_mode(cassette_path, new_entries)
         :ok
       end),
       Task.async(fn ->
@@ -149,7 +155,7 @@ defmodule Reqord.ConcurrentRequestsTest do
         current_entries = Process.get(entries_key, [])
         new_entries = current_entries ++ [entry]
         Process.put(entries_key, new_entries)
-        write_all_entries_to_cassette(cassette_path, new_entries)
+        write_all_entries_for_all_mode(cassette_path, new_entries)
         :ok
       end)
     ]
@@ -162,22 +168,22 @@ defmodule Reqord.ConcurrentRequestsTest do
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [cleanup1]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     cleanup2 = create_test_entry("DELETE", "https://api.example.com/datasets/2", "deleted")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [cleanup2]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     cleanup3 = create_test_entry("DELETE", "https://api.example.com/datasets/3", "deleted")
     current_entries = Process.get(entries_key, [])
     new_entries = current_entries ++ [cleanup3]
     Process.put(entries_key, new_entries)
-    write_all_entries_to_cassette(cassette_path, new_entries)
+    write_all_entries_for_all_mode(cassette_path, new_entries)
 
     # Load and analyze results
-    entries = Cassette.load(cassette_path)
+    entries = CassetteReader.load_entries(cassette_path)
 
     # The bug: because each spawned process has empty process dictionary,
     # each async POST request overwrites the cassette with just itself
@@ -210,19 +216,5 @@ defmodule Reqord.ConcurrentRequestsTest do
     {:ok, resp} = CassetteEntry.Response.new(status, %{}, Base.encode64(response_body))
     {:ok, entry} = CassetteEntry.new(req, resp)
     entry
-  end
-
-  defp write_all_entries_to_cassette(cassette_path, entries) do
-    # Ensure directory exists
-    cassette_path |> Path.dirname() |> File.mkdir_p!()
-
-    # Write all entries to the cassette file, replacing any existing content
-    content =
-      Enum.map_join(entries, "\n", fn entry ->
-        entry_map = CassetteEntry.to_map(entry)
-        Reqord.JSON.encode!(entry_map)
-      end)
-
-    File.write!(cassette_path, content <> "\n")
   end
 end

@@ -1,0 +1,2 @@
+{"req":{"url":"https://api.example.com/action","headers":{},"method":"POST","body_hash":"e7e4f446ad1ae5e2af6590a040d2d75379b5304927c51104e9519bdac0965184"},"resp":{"status":201,"headers":{},"body_b64":"Y3JlYXRlZA=="}}
+{"req":{"url":"https://api.example.com/action","headers":{},"method":"POST","body_hash":"82ec2db864a10213d3a53faf0c48b482adf95be5b7cecfa05fdce05887db0a70"},"resp":{"status":200,"headers":{},"body_b64":"dXBkYXRlZA=="}}

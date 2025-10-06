@@ -1,0 +1,2 @@
+{"req": {"method": "GET", "url": "https://api.example.com/complete", "body_hash": "-", "headers": {}}, "resp": {"status": 200, "headers": {}, "body_b64": "Y29tcGxldGU="}}
+{"req": {"method": "GET", "url": "https://api.example.com/truncated", "body_hash": "-", "headers": {}}, "resp": {"status": 200, "head

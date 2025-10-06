@@ -1,0 +1,1 @@
+{"req":{"url":"https://invalid-nonexistent-domain-12345.com/api/test","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{"content-type":"application/json"},"body_b64":"eyJtZXNzYWdlIjoiZnJvbV9jYXNzZXR0ZSJ9"}}

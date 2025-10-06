@@ -4,7 +4,8 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{Cassette, CassetteEntry, CassetteState}
+  alias Reqord.{CassetteEntry, CassetteReader, CassetteState, Storage.FileSystem}
+  import Reqord.TestHelpers
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_concurrent_fixed_test")
 
@@ -14,14 +15,17 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     File.mkdir_p!(test_dir)
 
     on_exit(fn ->
-      File.rm_rf!(test_dir)
+      nil
+      # Don't delete test directories - cassettes should persist
     end)
 
     %{test_dir: test_dir}
   end
 
+  @tag vcr_mode: :all
   test "GenServer state works across processes", %{test_dir: test_dir} do
     cassette_path = Path.join(test_dir, "genserver_test.jsonl")
+    clear_cassette_for_all_mode(cassette_path)
 
     # Start the GenServer for this cassette
     {:ok, _pid} = CassetteState.start_for_cassette(cassette_path)
@@ -64,8 +68,10 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     CassetteState.stop_for_cassette(cassette_path)
   end
 
+  @tag vcr_mode: :all
   test "concurrent requests work with GenServer-based state", %{test_dir: test_dir} do
     cassette_path = Path.join(test_dir, "concurrent_fixed.jsonl")
+    clear_cassette_for_all_mode(cassette_path)
 
     # Initialize GenServer state
     {:ok, _pid} = CassetteState.start_for_cassette(cassette_path)
@@ -77,21 +83,21 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
         entry = create_test_entry("POST", "https://api.example.com/datasets", "dataset 1")
         CassetteState.append_entry(cassette_path, entry)
         current_entries = CassetteState.get_entries(cassette_path)
-        write_all_entries_to_cassette(cassette_path, current_entries)
+        write_all_entries_for_all_mode(cassette_path, current_entries)
         :ok
       end),
       Task.async(fn ->
         entry = create_test_entry("POST", "https://api.example.com/datasets", "dataset 2")
         CassetteState.append_entry(cassette_path, entry)
         current_entries = CassetteState.get_entries(cassette_path)
-        write_all_entries_to_cassette(cassette_path, current_entries)
+        write_all_entries_for_all_mode(cassette_path, current_entries)
         :ok
       end),
       Task.async(fn ->
         entry = create_test_entry("POST", "https://api.example.com/datasets", "dataset 3")
         CassetteState.append_entry(cassette_path, entry)
         current_entries = CassetteState.get_entries(cassette_path)
-        write_all_entries_to_cassette(cassette_path, current_entries)
+        write_all_entries_for_all_mode(cassette_path, current_entries)
         :ok
       end)
     ]
@@ -103,20 +109,20 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     cleanup1 = create_test_entry("DELETE", "https://api.example.com/datasets/1", "deleted")
     CassetteState.append_entry(cassette_path, cleanup1)
     current_entries = CassetteState.get_entries(cassette_path)
-    write_all_entries_to_cassette(cassette_path, current_entries)
+    write_all_entries_for_all_mode(cassette_path, current_entries)
 
     cleanup2 = create_test_entry("DELETE", "https://api.example.com/datasets/2", "deleted")
     CassetteState.append_entry(cassette_path, cleanup2)
     current_entries = CassetteState.get_entries(cassette_path)
-    write_all_entries_to_cassette(cassette_path, current_entries)
+    write_all_entries_for_all_mode(cassette_path, current_entries)
 
     cleanup3 = create_test_entry("DELETE", "https://api.example.com/datasets/3", "deleted")
     CassetteState.append_entry(cassette_path, cleanup3)
     current_entries = CassetteState.get_entries(cassette_path)
-    write_all_entries_to_cassette(cassette_path, current_entries)
+    write_all_entries_for_all_mode(cassette_path, current_entries)
 
     # Load and analyze results
-    entries = Cassette.load(cassette_path)
+    entries = CassetteReader.load_entries(cassette_path)
 
     post_entries = Enum.filter(entries, &(&1.req.method == "POST"))
     delete_entries = Enum.filter(entries, &(&1.req.method == "DELETE"))
@@ -132,9 +138,12 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     CassetteState.stop_for_cassette(cassette_path)
   end
 
+  @tag vcr_mode: :all
   test "demonstrates the difference between broken and fixed approaches", %{test_dir: test_dir} do
     broken_cassette = Path.join(test_dir, "broken_approach.jsonl")
     fixed_cassette = Path.join(test_dir, "fixed_approach.jsonl")
+    clear_cassette_for_all_mode(broken_cassette)
+    clear_cassette_for_all_mode(fixed_cassette)
 
     # BROKEN APPROACH: Using process dictionary (like original Reqord)
     broken_entries_key = {:reqord_entries, broken_cassette}
@@ -147,7 +156,7 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
         current_entries = Process.get(broken_entries_key, [])
         new_entries = current_entries ++ [entry]
         Process.put(broken_entries_key, new_entries)
-        write_all_entries_to_cassette(broken_cassette, new_entries)
+        write_all_entries_for_all_mode(broken_cassette, new_entries)
         :ok
       end),
       Task.async(fn ->
@@ -156,7 +165,7 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
         current_entries = Process.get(broken_entries_key, [])
         new_entries = current_entries ++ [entry]
         Process.put(broken_entries_key, new_entries)
-        write_all_entries_to_cassette(broken_cassette, new_entries)
+        write_all_entries_for_all_mode(broken_cassette, new_entries)
         :ok
       end)
     ]
@@ -171,26 +180,26 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
       Task.async(fn ->
         entry = create_test_entry("POST", "https://api.example.com/fixed", "data 1")
         CassetteState.append_entry(fixed_cassette, entry)
-        current_entries = CassetteState.get_entries(fixed_cassette)
-        write_all_entries_to_cassette(fixed_cassette, current_entries)
         :ok
       end),
       Task.async(fn ->
         entry = create_test_entry("POST", "https://api.example.com/fixed", "data 2")
         CassetteState.append_entry(fixed_cassette, entry)
-        current_entries = CassetteState.get_entries(fixed_cassette)
-        write_all_entries_to_cassette(fixed_cassette, current_entries)
         :ok
       end)
     ]
 
     Task.await_many(fixed_tasks)
 
+    # Write all accumulated entries at the end (simulating :all mode behavior)
+    final_entries = CassetteState.get_entries(fixed_cassette)
+    write_all_entries_for_all_mode(fixed_cassette, final_entries)
+
     # Compare results
     _broken_entries =
-      if File.exists?(broken_cassette), do: Cassette.load(broken_cassette), else: []
+      if File.exists?(broken_cassette), do: CassetteReader.load_entries(broken_cassette), else: []
 
-    fixed_entries = Cassette.load(fixed_cassette)
+    fixed_entries = CassetteReader.load_entries(fixed_cassette)
 
     # The fixed approach should record all entries
     assert length(fixed_entries) == 2
@@ -208,19 +217,5 @@ defmodule Reqord.ConcurrentRequestsFixedTest do
     {:ok, resp} = CassetteEntry.Response.new(status, %{}, Base.encode64(response_body))
     {:ok, entry} = CassetteEntry.new(req, resp)
     entry
-  end
-
-  defp write_all_entries_to_cassette(cassette_path, entries) do
-    # Ensure directory exists
-    cassette_path |> Path.dirname() |> File.mkdir_p!()
-
-    # Write all entries to the cassette file, replacing any existing content
-    content =
-      Enum.map_join(entries, "\n", fn entry ->
-        entry_map = CassetteEntry.to_map(entry)
-        Reqord.JSON.encode!(entry_map)
-      end)
-
-    File.write!(cassette_path, content <> "\n")
   end
 end

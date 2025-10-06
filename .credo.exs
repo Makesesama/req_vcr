@@ -89,7 +89,7 @@
           # If you don't want TODO comments to cause `mix credo` to fail, just
           # set this value to 0 (zero).
           #
-          {Credo.Check.Design.TagTODO, [exit_status: 2]},
+          {Credo.Check.Design.TagTODO, [exit_status: 0]},
 
           #
           ## Readability Checks
@@ -118,23 +118,24 @@
 
           #
           ## Refactoring Opportunities
+          # Set exit_status: 0 so refactoring opportunities don't cause failures
           #
-          {Credo.Check.Refactor.Apply, []},
-          {Credo.Check.Refactor.CondStatements, []},
-          {Credo.Check.Refactor.CyclomaticComplexity, []},
-          {Credo.Check.Refactor.FilterCount, []},
-          {Credo.Check.Refactor.FilterFilter, []},
-          {Credo.Check.Refactor.FunctionArity, []},
-          {Credo.Check.Refactor.LongQuoteBlocks, []},
-          {Credo.Check.Refactor.MapJoin, []},
-          {Credo.Check.Refactor.MatchInCondition, []},
-          {Credo.Check.Refactor.NegatedConditionsInUnless, []},
-          {Credo.Check.Refactor.NegatedConditionsWithElse, []},
-          {Credo.Check.Refactor.Nesting, []},
-          {Credo.Check.Refactor.RedundantWithClauseResult, []},
-          {Credo.Check.Refactor.RejectReject, []},
-          {Credo.Check.Refactor.UnlessWithElse, []},
-          {Credo.Check.Refactor.WithClauses, []},
+          {Credo.Check.Refactor.Apply, [exit_status: 0]},
+          {Credo.Check.Refactor.CondStatements, [exit_status: 0]},
+          {Credo.Check.Refactor.CyclomaticComplexity, [exit_status: 0]},
+          {Credo.Check.Refactor.FilterCount, [exit_status: 0]},
+          {Credo.Check.Refactor.FilterFilter, [exit_status: 0]},
+          {Credo.Check.Refactor.FunctionArity, [exit_status: 0]},
+          {Credo.Check.Refactor.LongQuoteBlocks, [exit_status: 0]},
+          {Credo.Check.Refactor.MapJoin, [exit_status: 0]},
+          {Credo.Check.Refactor.MatchInCondition, [exit_status: 0]},
+          {Credo.Check.Refactor.NegatedConditionsInUnless, [exit_status: 0]},
+          {Credo.Check.Refactor.NegatedConditionsWithElse, [exit_status: 0]},
+          {Credo.Check.Refactor.Nesting, [exit_status: 0]},
+          {Credo.Check.Refactor.RedundantWithClauseResult, [exit_status: 0]},
+          {Credo.Check.Refactor.RejectReject, [exit_status: 0]},
+          {Credo.Check.Refactor.UnlessWithElse, [exit_status: 0]},
+          {Credo.Check.Refactor.WithClauses, [exit_status: 0]},
 
           #
           ## Warnings

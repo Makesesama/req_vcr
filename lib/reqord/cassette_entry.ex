@@ -114,13 +114,19 @@ defmodule Reqord.CassetteEntry do
     @type t :: %__MODULE__{
             status: pos_integer(),
             headers: Reqord.CassetteEntry.headers(),
-            body_b64: String.t()
+            body_b64: String.t(),
+            body_encoding: String.t(),
+            body_external_ref: String.t() | nil,
+            stream_metadata: map() | nil
           }
 
-    defstruct [:status, :headers, :body_b64]
+    defstruct [:status, :headers, :body_b64, :body_encoding, :body_external_ref, :stream_metadata]
 
     @doc """
     Creates a new Response struct with validation.
+
+    For backward compatibility, accepts Base64-encoded body.
+    Use `new_with_raw_body/3` for automatic encoding detection.
     """
     @spec new(pos_integer(), map(), String.t()) :: {:ok, t()} | {:error, String.t()}
     def new(status, headers, body_b64)
@@ -130,7 +136,11 @@ defmodule Reqord.CassetteEntry do
       response = %__MODULE__{
         status: status,
         headers: normalized_headers,
-        body_b64: body_b64
+        body_b64: body_b64,
+        # Legacy default
+        body_encoding: "base64",
+        body_external_ref: nil,
+        stream_metadata: nil
       }
 
       {:ok, response}
@@ -145,6 +155,99 @@ defmodule Reqord.CassetteEntry do
 
     def new(_, _, body) when not is_binary(body) do
       {:error, "Body must be a base64-encoded string"}
+    end
+
+    @doc """
+    Creates a new Response struct with automatic encoding detection.
+
+    This function analyzes the raw body content and determines the optimal
+    storage strategy based on content type and size.
+    """
+    @spec new_with_raw_body(pos_integer(), map(), binary()) :: {:ok, t()} | {:error, String.t()}
+    def new_with_raw_body(status, headers, raw_body)
+        when is_integer(status) and status > 0 and is_binary(raw_body) do
+      normalized_headers = normalize_headers(headers)
+      content_type = Reqord.ContentAnalyzer.extract_content_type(normalized_headers)
+
+      {encoding_type, content} = Reqord.ContentAnalyzer.analyze_content(content_type, raw_body)
+      body_size = byte_size(raw_body)
+
+      cond do
+        encoding_type == :stream ->
+          create_stream_response(status, normalized_headers, content)
+
+        Reqord.ContentAnalyzer.should_store_externally?(encoding_type, body_size) ->
+          create_external_response(status, normalized_headers, content, encoding_type)
+
+        true ->
+          create_inline_response(status, normalized_headers, content, encoding_type)
+      end
+    rescue
+      e ->
+        {:error, "Invalid response data: #{Exception.message(e)}"}
+    end
+
+    # Helper functions for creating different response types
+
+    defp create_inline_response(status, headers, content, encoding_type) do
+      response = %__MODULE__{
+        status: status,
+        headers: headers,
+        body_b64: Base.encode64(content),
+        body_encoding: to_string(encoding_type),
+        body_external_ref: nil,
+        stream_metadata: nil
+      }
+
+      {:ok, response}
+    end
+
+    defp create_external_response(status, headers, content, encoding_type) do
+      # Generate content hash for external storage
+      content_hash = :crypto.hash(:sha256, content) |> Base.encode16(case: :lower)
+
+      # Store the content externally using the configured storage backend
+      storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
+
+      case storage_backend.store_object(content_hash, content) do
+        {:ok, _} ->
+          response = %__MODULE__{
+            status: status,
+            headers: headers,
+            # Empty for external storage
+            body_b64: "",
+            body_encoding: "external_#{encoding_type}",
+            body_external_ref: content_hash,
+            stream_metadata: %{"size" => byte_size(content)}
+          }
+
+          {:ok, response}
+
+        {:error, _reason} ->
+          # Fallback to inline storage if external fails
+          create_inline_response(status, headers, content, encoding_type)
+      end
+    end
+
+    defp create_stream_response(status, headers, content) do
+      # For now, store streams inline with metadata
+      # Future enhancement: parse SSE/chunked streams
+      stream_metadata = %{
+        "type" => "stream",
+        "size" => byte_size(content),
+        "detected_at" => DateTime.utc_now() |> DateTime.to_unix(:microsecond)
+      }
+
+      response = %__MODULE__{
+        status: status,
+        headers: headers,
+        body_b64: Base.encode64(content),
+        body_encoding: "stream",
+        body_external_ref: nil,
+        stream_metadata: stream_metadata
+      }
+
+      {:ok, response}
     end
 
     # Normalize headers to ensure consistent format
@@ -220,11 +323,7 @@ defmodule Reqord.CassetteEntry do
         "headers" => req.headers,
         "body_hash" => req.body_hash
       },
-      "resp" => %{
-        "status" => resp.status,
-        "headers" => resp.headers,
-        "body_b64" => resp.body_b64
-      },
+      "resp" => resp_to_map(resp),
       "recorded_at" => recorded_at
     }
   end
@@ -244,6 +343,23 @@ defmodule Reqord.CassetteEntry do
   def validate(_), do: {:error, "Invalid cassette entry structure"}
 
   # Private helper functions
+
+  defp resp_to_map(resp) do
+    base = %{
+      "status" => resp.status,
+      "headers" => resp.headers,
+      "body_b64" => resp.body_b64
+    }
+
+    # Add new fields if they exist
+    base
+    |> maybe_add_field("body_encoding", resp.body_encoding)
+    |> maybe_add_field("body_external_ref", resp.body_external_ref)
+    |> maybe_add_field("stream_metadata", resp.stream_metadata)
+  end
+
+  defp maybe_add_field(map, _key, nil), do: map
+  defp maybe_add_field(map, key, value), do: Map.put(map, key, value)
 
   defp create_request_from_raw(%{
          "method" => method,
@@ -269,7 +385,23 @@ defmodule Reqord.CassetteEntry do
   defp create_response_from_raw(%{"status" => status} = data) do
     headers = Map.get(data, "headers", %{})
     body_b64 = Map.get(data, "body_b64", "")
-    Response.new(status, headers, body_b64)
+
+    # Create basic response
+    case Response.new(status, headers, body_b64) do
+      {:ok, response} ->
+        # Add new fields if present
+        enhanced_response = %{
+          response
+          | body_encoding: Map.get(data, "body_encoding", "base64"),
+            body_external_ref: Map.get(data, "body_external_ref"),
+            stream_metadata: Map.get(data, "stream_metadata")
+        }
+
+        {:ok, enhanced_response}
+
+      error ->
+        error
+    end
   end
 
   defp create_response_from_raw(_) do

@@ -29,7 +29,7 @@ defmodule Reqord.Config do
 
   ### Default Record Mode
 
-      config :reqord, :default_mode, :once
+      config :reqord, :default_mode, :none
 
   ### Custom Filters (for additional redaction)
 
@@ -127,16 +127,16 @@ defmodule Reqord.Config do
   @doc """
   Gets the default record mode.
 
-  Defaults to :once if not configured.
+  Defaults to :none if not configured.
 
   ## Examples
 
       iex> Reqord.Config.default_mode()
-      :once
+      :none
   """
   @spec default_mode() :: :once | :new_episodes | :all | :none
   def default_mode do
-    Application.get_env(:reqord, :default_mode, :once)
+    Application.get_env(:reqord, :default_mode, :none)
   end
 
   @doc """
@@ -160,10 +160,10 @@ defmodule Reqord.Config do
   end
 
   @doc """
-  Gets the directory path for a given cassette name.
+  Gets the path for a given cassette name.
 
-  Combines the cassette directory with the cassette name and ensures
-  the directory exists.
+  Combines the cassette directory with the cassette name.
+  Does NOT create directories - that's handled by storage backends when needed.
 
   ## Examples
 
@@ -173,8 +173,90 @@ defmodule Reqord.Config do
   @spec cassette_path(String.t()) :: String.t()
   def cassette_path(cassette_name) do
     dir = cassette_dir()
-    File.mkdir_p!(dir)
     Path.join(dir, "#{cassette_name}.jsonl")
+  end
+
+  @doc """
+  Get the maximum inline size for response bodies before using external storage.
+
+  ## Examples
+
+      iex> Reqord.Config.max_inline_size()
+      1048576
+
+      iex> Application.put_env(:reqord, :max_inline_size, 2_000_000)
+      iex> Reqord.Config.max_inline_size()
+      2000000
+
+  """
+  @spec max_inline_size() :: pos_integer()
+  def max_inline_size do
+    Application.get_env(:reqord, :max_inline_size, 1_048_576)
+  end
+
+  @doc """
+  Get the object directory for external storage.
+
+  ## Examples
+
+      iex> Reqord.Config.object_directory()
+      "test/support/cassettes/objects"
+
+      iex> Application.put_env(:reqord, :object_directory, "custom/objects")
+      iex> Reqord.Config.object_directory()
+      "custom/objects"
+
+  """
+  @spec object_directory() :: String.t()
+  def object_directory do
+    default_dir = Path.join(cassette_dir(), "objects")
+    Application.get_env(:reqord, :object_directory, default_dir)
+  end
+
+  @doc """
+  Get the binary storage strategy.
+
+  ## Returns
+  - `:inline` - Always store inline as base64
+  - `:external` - Always use external storage for binary content
+  - `:auto` - Automatic based on size threshold (default)
+
+  ## Examples
+
+      iex> Reqord.Config.binary_storage()
+      :auto
+
+      iex> Application.put_env(:reqord, :binary_storage, :external)
+      iex> Reqord.Config.binary_storage()
+      :external
+
+  """
+  @spec binary_storage() :: :inline | :external | :auto
+  def binary_storage do
+    Application.get_env(:reqord, :binary_storage, :auto)
+  end
+
+  @doc """
+  Get the stream replay speed multiplier.
+
+  ## Returns
+  - `0` - Instant replay (default for tests)
+  - `1.0` - Real-time replay
+  - `> 1.0` - Accelerated replay
+
+  ## Examples
+
+      iex> Reqord.Config.stream_speed()
+      0
+
+      iex> Application.put_env(:reqord, :stream_speed, 1.0)
+      iex> Reqord.Config.stream_speed()
+      1.0
+
+  """
+  @spec stream_speed() :: number()
+  def stream_speed do
+    Application.get_env(:reqord, :stream_speed, 0)
   end
 
   @doc """
@@ -226,11 +308,7 @@ defmodule Reqord.Config do
         {:error, "Cassette directory cannot be empty"}
 
       true ->
-        # Try to create the directory to test writability
-        case File.mkdir_p(dir) do
-          :ok -> :ok
-          {:error, reason} -> {:error, "Cannot create cassette directory: #{reason}"}
-        end
+        :ok
     end
   end
 

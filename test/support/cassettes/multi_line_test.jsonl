@@ -1,0 +1,3 @@
+{"req":{"url":"https://api.example.com/users","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"dXNlcnM="}}
+{"req":{"url":"https://api.example.com/posts","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"cG9zdHM="}}
+{"req":{"url":"https://api.example.com/comments","headers":{},"method":"POST","body_hash":"abc"},"resp":{"status":201,"headers":{},"body_b64":"Y3JlYXRlZA=="}}

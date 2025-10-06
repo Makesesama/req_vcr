@@ -30,15 +30,12 @@ defmodule Reqord.Record do
   def record_request(conn, _name, cassette_path, method, url, body, mode) do
     headers = conn.req_headers
 
-    # Make live request and handle the response
     live_response = make_live_request(headers, method, url, body)
     normalized_resp = normalize_response(live_response)
 
-    # Create and store cassette entry
     entry = create_cassette_entry(method, url, headers, body, normalized_resp)
     store_cassette_entry(entry, cassette_path, mode)
 
-    # Return the response
     build_response(conn, live_response, normalized_resp)
   end
 
@@ -77,12 +74,11 @@ defmodule Reqord.Record do
              hash_body(method, body)
            ),
          {:ok, resp} <-
-           CassetteEntry.Response.new(
+           CassetteEntry.Response.new_with_raw_body(
              normalized_resp[:status],
              normalized_resp[:headers],
-             normalized_resp[:body_b64]
+             normalized_resp[:raw_body]
            ),
-         # Create entry with timestamp
          {:ok, entry} <- CassetteEntry.new(req, resp, System.system_time(:microsecond)) do
       entry
     else
@@ -99,26 +95,14 @@ defmodule Reqord.Record do
         handle_all_mode_storage(entry, cassette_path)
 
       _ ->
-        # Use async writer for better performance
         entry_map = CassetteEntry.to_map(entry)
         Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
     end
   end
 
   defp handle_all_mode_storage(entry, cassette_path) do
-    # Check if this is the first request by seeing if GenServer state is empty
-    current_entries_before = CassetteState.get_entries(cassette_path)
-    is_first_request = Enum.empty?(current_entries_before)
-
-    # If this is the first request, clear the existing cassette file
-    if is_first_request && File.exists?(cassette_path) do
-      storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
-      storage_backend.delete_cassette(cassette_path)
-    end
-
     CassetteState.append_entry(cassette_path, entry)
 
-    # Use async writer for better performance
     entry_map = CassetteEntry.to_map(entry)
     Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
   end
@@ -131,12 +115,10 @@ defmodule Reqord.Record do
   end
 
   defp normalize_response(response) do
-    # Filter out volatile headers and convert to string values
     headers =
       response.headers
       |> Enum.reject(fn {key, _} -> String.downcase(key) in Config.volatile_headers() end)
       |> Enum.map(fn {key, value} ->
-        # Convert list values to comma-separated string
         string_value =
           case value do
             list when is_list(list) -> Enum.join(list, ", ")
@@ -147,10 +129,13 @@ defmodule Reqord.Record do
       end)
       |> Redactor.redact_headers()
 
+    raw_body = Redactor.redact_response_body(response.body || "")
+
     %{
       status: response.status,
       headers: headers,
-      body_b64: Base.encode64(Redactor.redact_response_body(response.body || ""))
+      raw_body: raw_body,
+      body_b64: Base.encode64(raw_body)
     }
   end
 

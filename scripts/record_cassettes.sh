@@ -48,12 +48,9 @@ fi
 
 # Run tests based on arguments
 if [ "$TEST_FILES" = "default" ]; then
-    # Run default test suite
-    echo "Recording cassettes..."
-    REQORD=$RECORD_MODE mix test test/example_api_test.exs
-
-    echo "Recording integration test cassettes..."
-    REQORD=$RECORD_MODE mix test test/reqord/multiple_requests_integration_test.exs --include integration
+    # Run ALL tests
+    echo "Recording all cassettes..."
+    REQORD=$RECORD_MODE mix test --include integration
 else
     # Run specified test file with any additional arguments
     echo "Running test: $TEST_FILES $TEST_ARGS"

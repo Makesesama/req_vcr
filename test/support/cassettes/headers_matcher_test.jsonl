@@ -1,0 +1,1 @@
+{"req":{"url":"https://api.example.com/data","headers":{"accept":"application/json","x-api-key":"secret123"},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"bWF0Y2hlZA=="}}

@@ -5,7 +5,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
   """
 
   use ExUnit.Case
-  alias Reqord.Cassette
+  alias Reqord.{CassetteReader, Storage.FileSystem}
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_cassette_edge_test")
 
@@ -15,7 +15,8 @@ defmodule Reqord.CassetteEdgeCasesTest do
     File.mkdir_p!(test_dir)
 
     on_exit(fn ->
-      File.rm_rf(test_dir)
+      nil
+      # Don't delete test directories - cassettes should persist
     end)
 
     %{test_dir: test_dir}
@@ -34,7 +35,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       File.write!(cassette_file, Enum.join(entries, ""))
 
       # Should be able to read despite mixed endings
-      loaded_entries = Cassette.load(cassette_file)
+      loaded_entries = CassetteReader.load_entries(cassette_file)
       assert length(loaded_entries) == 3
     end
 
@@ -51,7 +52,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
         cassette_file = Path.join(test_dir, filename)
         File.write!(cassette_file, content)
 
-        entries = Cassette.load(cassette_file)
+        entries = CassetteReader.load_entries(cassette_file)
         assert entries == []
       end
     end
@@ -64,7 +65,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       # No \n at end
       File.write!(cassette_file, content)
 
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
     end
 
@@ -77,7 +78,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       File.write!(cassette_file, content)
 
       # Should handle BOM gracefully (may or may not parse depending on implementation)
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       # BOM should be handled gracefully, may return empty list
       assert is_list(entries)
     end
@@ -104,7 +105,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       File.write!(cassette_file, Enum.join(lines, "\n"))
 
       # Should skip invalid entries and load valid ones
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       # Only the 3 valid entries
       assert length(entries) == 3
     end
@@ -133,7 +134,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       File.write!(cassette_file, content)
 
       # Should handle long lines
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
 
       # Verify content is preserved
@@ -163,7 +164,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       cassette_file = Path.join(test_dir, "embedded_chars.jsonl")
       File.write!(cassette_file, content)
 
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
 
       loaded_entry = hd(entries)
@@ -184,7 +185,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       File.write!(cassette_file, Enum.join(entries, "\n"))
 
       # Should load all entries efficiently
-      loaded_entries = Cassette.load(cassette_file)
+      loaded_entries = CassetteReader.load_entries(cassette_file)
       assert length(loaded_entries) == 1000
 
       # Verify some entries
@@ -207,7 +208,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       cassette_file = Path.join(test_dir, "large_response.jsonl")
       File.write!(cassette_file, Jason.encode!(entry))
 
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
 
       loaded_entry = hd(entries)
@@ -231,7 +232,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       tasks =
         for i <- 1..10 do
           Task.async(fn ->
-            loaded_entries = Cassette.load(cassette_file)
+            loaded_entries = CassetteReader.load_entries(cassette_file)
             {i, length(loaded_entries)}
           end)
         end
@@ -255,7 +256,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
         Task.async(fn ->
           # Add delay to increase chance of concurrent modification
           :timer.sleep(10)
-          Cassette.load(cassette_file)
+          CassetteReader.load_entries(cassette_file)
         end)
 
       # Modify file during read
@@ -273,7 +274,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
     test "handles non-existent cassette files gracefully", %{test_dir: test_dir} do
       non_existent = Path.join(test_dir, "does_not_exist.jsonl")
 
-      entries = Cassette.load(non_existent)
+      entries = CassetteReader.load_entries(non_existent)
       # Non-existent files should return empty list
       assert entries == []
     end
@@ -281,7 +282,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
     test "handles cassette files in non-existent directories", %{test_dir: test_dir} do
       deep_path = Path.join([test_dir, "non", "existent", "path", "cassette.jsonl"])
 
-      entries = Cassette.load(deep_path)
+      entries = CassetteReader.load_entries(deep_path)
       # Non-existent paths should return empty list
       assert entries == []
     end
@@ -294,7 +295,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       case File.chmod(cassette_file, 0o444) do
         :ok ->
           # Should still be able to read
-          entries = Cassette.load(cassette_file)
+          entries = CassetteReader.load_entries(cassette_file)
           # Should still be able to read even with changed permissions
           assert length(entries) == 1
 
@@ -318,7 +319,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       cassette_file = Path.join(test_dir, "unusual_methods.jsonl")
       File.write!(cassette_file, Enum.join(entries, "\n"))
 
-      loaded_entries = Cassette.load(cassette_file)
+      loaded_entries = CassetteReader.load_entries(cassette_file)
       assert length(loaded_entries) == length(unusual_methods)
 
       # Verify methods are preserved
@@ -337,7 +338,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       cassette_file = Path.join(test_dir, "edge_status_codes.jsonl")
       File.write!(cassette_file, Enum.join(entries, "\n"))
 
-      loaded_entries = Cassette.load(cassette_file)
+      loaded_entries = CassetteReader.load_entries(cassette_file)
       assert length(loaded_entries) == length(edge_status_codes)
 
       # Verify status codes are preserved
@@ -372,7 +373,7 @@ defmodule Reqord.CassetteEdgeCasesTest do
       cassette_file = Path.join(test_dir, "complex_headers.jsonl")
       File.write!(cassette_file, Jason.encode!(entry))
 
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
 
       loaded_entry = hd(entries)

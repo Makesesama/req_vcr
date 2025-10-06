@@ -5,15 +5,13 @@ defmodule Reqord.TimestampOrderingTest do
   """
 
   use ExUnit.Case
+  import Reqord.TestHelpers
   alias Reqord.{CassetteReader, CassetteWriter, Storage.FileSystem}
 
-  # No need to start CassetteWriter - it's already started by the application
-
+  @tag vcr_mode: :all
   test "entries are sorted by timestamp when reading" do
     cassette_path = "test/support/cassettes/test_timestamp_ordering.jsonl"
-
-    # Clean up any existing cassette
-    File.rm(cassette_path)
+    clear_cassette_for_all_mode(cassette_path)
 
     # Create entries with specific timestamps (out of order)
     entries = [
@@ -25,10 +23,13 @@ defmodule Reqord.TimestampOrderingTest do
       create_entry("DELETE", "/users/2", "deleted2", 250)
     ]
 
-    # Write entries out of order
+    # Write entries out of order using CassetteWriter (which sorts by timestamp)
     Enum.each(entries, fn entry ->
-      FileSystem.write_entry(cassette_path, entry)
+      CassetteWriter.write_entry(cassette_path, entry)
     end)
+
+    # Force flush to ensure all entries are written and sorted
+    CassetteWriter.flush_cassette(cassette_path)
 
     # Read entries back - they should be sorted by timestamp
     loaded_entries = CassetteReader.load_entries(cassette_path)
@@ -46,15 +47,15 @@ defmodule Reqord.TimestampOrderingTest do
     assert methods == ["POST", "DELETE", "POST", "DELETE", "POST", "DELETE"]
     assert urls == ["/users", "/users/1", "/users", "/users/2", "/users", "/users/3"]
 
-    # Clean up
-    File.rm(cassette_path)
+    # No cleanup needed - never delete cassettes
   end
 
+  @tag vcr_mode: :all
   test "CassetteWriter batches and sorts entries before writing" do
     cassette_path = "test/support/cassettes/test_writer_batching.jsonl"
+    clear_cassette_for_all_mode(cassette_path)
 
-    # Clean up any existing cassette
-    File.rm(cassette_path)
+    # Never delete cassettes - tests should only append
 
     # Write entries with timestamps out of order
     CassetteWriter.write_entry(cassette_path, create_entry("POST", "/users", "user2", 200))
@@ -71,8 +72,7 @@ defmodule Reqord.TimestampOrderingTest do
     timestamps = Enum.map(loaded_entries, & &1.recorded_at)
     assert timestamps == [100, 150, 200]
 
-    # Clean up
-    File.rm(cassette_path)
+    # No cleanup needed - never delete cassettes
   end
 
   # Helper to create a cassette entry map with specific timestamp

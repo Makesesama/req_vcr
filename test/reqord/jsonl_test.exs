@@ -7,20 +7,9 @@ defmodule Reqord.JSONLTest do
     # Ensure cassette directory exists
     File.mkdir_p!(@cassette_dir)
 
-    # Clean up temporary test files, but preserve fixtures and ExampleAPI
     on_exit(fn ->
-      File.ls!(@cassette_dir)
-      # Keep permanent test fixtures and ExampleAPI cassettes
-      |> Enum.reject(&(&1 in ["fixtures", "ExampleAPI"]))
-      |> Enum.each(fn file ->
-        file_path = Path.join(@cassette_dir, file)
-
-        if File.dir?(file_path) do
-          File.rm_rf!(file_path)
-        else
-          File.rm!(file_path)
-        end
-      end)
+      nil
+      # Don't delete test files - they should persist
     end)
 
     :ok

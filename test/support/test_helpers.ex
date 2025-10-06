@@ -104,8 +104,90 @@ defmodule Reqord.TestHelpers do
   """
   def test_api_client do
     Req.new(
+      plug: {Req.Test, Reqord.ExampleAPIStub},
       base_url: "http://localhost:4001",
       headers: [{"authorization", "Bearer test-token"}]
     )
+  end
+
+  @doc """
+  Safely clears a single cassette file for :all mode tests.
+
+  This function ensures that only the specified cassette file is deleted,
+  providing safety against accidentally deleting multiple files. It only
+  deletes files with .jsonl extension within the cassettes directory.
+
+  ## Examples
+
+      test "some test" do
+        cassette_path = "test/support/cassettes/my_test.jsonl"
+        clear_cassette_for_all_mode(cassette_path)
+        # Test logic that expects clean cassette...
+      end
+
+      test "with dynamic path" do
+        cassette_path = Path.join(test_dir, "my_cassette.jsonl")
+        clear_cassette_for_all_mode(cassette_path)
+        # Test logic...
+      end
+  """
+  def clear_cassette_for_all_mode(cassette_path) when is_binary(cassette_path) do
+    # Safety checks to prevent accidental deletion of multiple files
+    cond do
+      # Must be a .jsonl file
+      not String.ends_with?(cassette_path, ".jsonl") ->
+        raise ArgumentError, "Cassette path must end with .jsonl, got: #{cassette_path}"
+
+      # Must be a single file path (no wildcards)
+      String.contains?(cassette_path, "*") ->
+        raise ArgumentError, "Cassette path cannot contain wildcards, got: #{cassette_path}"
+
+      # Must be either in cassettes directory OR a test directory (tmp, temp, etc.)
+      not (String.contains?(cassette_path, "cassettes") or
+             String.contains?(cassette_path, "tmp") or
+             String.contains?(cassette_path, "temp") or
+               String.contains?(cassette_path, "test")) ->
+        raise ArgumentError,
+              "Cassette path must be in a test/temp directory for safety, got: #{cassette_path}"
+
+      # Path is safe, proceed with deletion
+      File.exists?(cassette_path) ->
+        File.rm!(cassette_path)
+
+      # File doesn't exist, nothing to do
+      true ->
+        :ok
+    end
+  end
+
+  @doc """
+  Writes all entries to a cassette with :all mode replacement behavior.
+
+  This function replaces the entire cassette file with the provided entries,
+  simulating the behavior of :all mode which replaces rather than appends.
+
+  ## Examples
+
+      test "some test" do
+        entries = [entry1, entry2]
+        write_all_entries_for_all_mode(cassette_path, entries)
+        # Cassette now contains exactly these entries
+      end
+  """
+  def write_all_entries_for_all_mode(cassette_path, entries)
+      when is_binary(cassette_path) and is_list(entries) do
+    alias Reqord.{CassetteEntry, Storage.FileSystem}
+
+    # Ensure the directory exists
+    FileSystem.ensure_path_exists(cassette_path)
+
+    # Clear the cassette first (simulating :all mode replacement)
+    clear_cassette_for_all_mode(cassette_path)
+
+    # Write all entries
+    Enum.each(entries, fn entry ->
+      entry_map = CassetteEntry.to_map(entry)
+      FileSystem.write_entry(cassette_path, entry_map)
+    end)
   end
 end

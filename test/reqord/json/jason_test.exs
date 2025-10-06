@@ -21,13 +21,8 @@ defmodule Reqord.JSON.JasonTest do
     ]
 
     on_exit(fn ->
-      Enum.each(test_files, fn file ->
-        file_path = Path.join(@cassette_dir, file)
-
-        if File.exists?(file_path) do
-          File.rm!(file_path)
-        end
-      end)
+      nil
+      # Don't delete test files - they should persist
     end)
 
     :ok

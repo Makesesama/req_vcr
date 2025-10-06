@@ -69,8 +69,12 @@ defmodule Reqord.ExampleAPITest do
   end
 
   test "returns 401 without authentication" do
-    # Create client without auth headers
-    client = Req.new(base_url: "http://localhost:4001")
+    # Create client without auth headers but with Req.Test plug
+    client =
+      Req.new(
+        plug: {Req.Test, Reqord.ExampleAPIStub},
+        base_url: "http://localhost:4001"
+      )
 
     {:ok, response} = Req.get(client, url: "/api/users")
 

@@ -65,4 +65,77 @@ defmodule Reqord.Storage.Behavior do
     - `false` otherwise
   """
   @callback exists?(path :: String.t()) :: boolean()
+
+  @doc """
+  Store a binary object externally and return its reference.
+
+  ## Parameters
+    - `hash` - Content hash to use as the object identifier
+    - `content` - Binary content to store
+
+  ## Returns
+    - `{:ok, hash}` on success with the object hash
+    - `{:error, reason}` on failure
+  """
+  @callback store_object(hash :: String.t(), content :: binary()) ::
+              {:ok, String.t()} | {:error, term()}
+
+  @doc """
+  Load a binary object by its hash reference.
+
+  ## Parameters
+    - `hash` - Object hash identifier
+
+  ## Returns
+    - `{:ok, content}` on success with the binary content
+    - `{:error, reason}` on failure (e.g., object not found)
+  """
+  @callback load_object(hash :: String.t()) :: {:ok, binary()} | {:error, term()}
+
+  @doc """
+  Store streaming data chunks externally.
+
+  ## Parameters
+    - `hash` - Content hash to use as the stream identifier
+    - `chunks` - List of {timestamp, data} tuples representing stream chunks
+
+  ## Returns
+    - `{:ok, hash}` on success with the stream hash
+    - `{:error, reason}` on failure
+  """
+  @callback store_stream(hash :: String.t(), chunks :: list()) ::
+              {:ok, String.t()} | {:error, term()}
+
+  @doc """
+  Load streaming data chunks by hash reference.
+
+  ## Parameters
+    - `hash` - Stream hash identifier
+
+  ## Returns
+    - `{:ok, chunks}` on success with list of {timestamp, data} tuples
+    - `{:error, reason}` on failure
+  """
+  @callback load_stream(hash :: String.t()) :: {:ok, list()} | {:error, term()}
+
+  @doc """
+  Delete an external object by its hash.
+
+  ## Parameters
+    - `hash` - Object hash identifier
+
+  ## Returns
+    - `:ok` on success (also returns :ok if object doesn't exist)
+    - `{:error, reason}` on failure
+  """
+  @callback delete_object(hash :: String.t()) :: :ok | {:error, term()}
+
+  @doc """
+  List all stored objects (for maintenance tasks).
+
+  ## Returns
+    - `{:ok, hashes}` with list of object hash identifiers
+    - `{:error, reason}` on failure
+  """
+  @callback list_objects() :: {:ok, [String.t()]} | {:error, term()}
 end
