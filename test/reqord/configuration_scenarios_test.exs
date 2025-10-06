@@ -97,11 +97,7 @@ defmodule Reqord.ConfigurationScenariosTest do
       original_object_dir = Application.get_env(:reqord, :object_directory)
 
       on_exit(fn ->
-        # Clean up test directories
-        ["tmp/custom_objects", "tmp/project_objects"]
-        |> Enum.each(fn dir ->
-          if File.exists?(dir), do: File.rm_rf!(dir)
-        end)
+        # Don't delete test directories - they should persist
 
         # Restore original configuration
         if original_object_dir do
@@ -280,8 +276,7 @@ defmodule Reqord.ConfigurationScenariosTest do
         assert resp.status == 200
       end)
 
-      # Clean up
-      if File.exists?("tmp/prod_objects"), do: File.rm_rf!("tmp/prod_objects")
+      # Don't delete test directories - they should persist
     end
 
     @tag integration: "config_development_mode"

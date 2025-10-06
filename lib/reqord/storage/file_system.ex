@@ -130,10 +130,7 @@ defmodule Reqord.Storage.FileSystem do
     case ensure_path_exists(stream_path) do
       :ok ->
         # Encode chunks as JSONL for easy parsing
-        content =
-          chunks
-          |> Enum.map(&JSON.encode!/1)
-          |> Enum.join("\n")
+        content = Enum.map_join(chunks, "\n", &JSON.encode!/1)
 
         case File.write(stream_path, content) do
           :ok -> {:ok, hash}
@@ -159,12 +156,7 @@ defmodule Reqord.Storage.FileSystem do
         chunks =
           content
           |> String.split("\n", trim: true)
-          |> Enum.map(fn line ->
-            case JSON.decode(line) do
-              {:ok, chunk} -> chunk
-              {:error, _} -> nil
-            end
-          end)
+          |> Enum.map(&decode_chunk_line/1)
           |> Enum.reject(&is_nil/1)
 
         {:ok, chunks}
@@ -202,7 +194,7 @@ defmodule Reqord.Storage.FileSystem do
   List all stored objects.
   """
   @impl true
-  def list_objects() do
+  def list_objects do
     objects_dir = objects_directory()
 
     case File.ls(objects_dir) do
@@ -259,6 +251,13 @@ defmodule Reqord.Storage.FileSystem do
       # File doesn't exist, that's fine
       {:error, :enoent} -> :ok
       {:error, reason} -> {:error, "Failed to delete #{path}: #{inspect(reason)}"}
+    end
+  end
+
+  defp decode_chunk_line(line) do
+    case JSON.decode(line) do
+      {:ok, chunk} -> chunk
+      {:error, _} -> nil
     end
   end
 end

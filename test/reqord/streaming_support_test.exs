@@ -22,7 +22,10 @@ defmodule Reqord.StreamingSupportTest do
 
       assert resp.status == 200
       content_type = Req.Response.get_header(resp, "content-type")
-      assert content_type == ["text/event-stream"] or content_type == ["text/event-stream; charset=utf-8"]
+
+      assert content_type == ["text/event-stream"] or
+               content_type == ["text/event-stream; charset=utf-8"]
+
       cache_control = Req.Response.get_header(resp, "cache-control")
       assert cache_control == ["no-cache"]
 
@@ -40,7 +43,9 @@ defmodule Reqord.StreamingSupportTest do
 
       assert resp.status == 200
       content_type = Req.Response.get_header(resp, "content-type")
-      assert content_type == ["text/event-stream"] or content_type == ["text/event-stream; charset=utf-8"]
+
+      assert content_type == ["text/event-stream"] or
+               content_type == ["text/event-stream; charset=utf-8"]
 
       # Should contain chat streaming format
       assert String.contains?(resp.body, "data: {\"role\": \"assistant\"")
@@ -157,8 +162,10 @@ defmodule Reqord.StreamingSupportTest do
       assert json_resp.status == 200
 
       # Verify content types are different
-      assert <<0xFF, 0xD8, 0xFF, _::binary>> = binary_resp.body  # JPEG header
-      assert String.contains?(stream_resp.body, "data: {")  # SSE format
+      # JPEG header
+      assert <<0xFF, 0xD8, 0xFF, _::binary>> = binary_resp.body
+      # SSE format
+      assert String.contains?(stream_resp.body, "data: {")
       # JSON response is parsed by Req, so check the structure
       assert is_list(json_resp.body)
       assert Enum.any?(json_resp.body, fn user -> user["name"] == "Alice" end)

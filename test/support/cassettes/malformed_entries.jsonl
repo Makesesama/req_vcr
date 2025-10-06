@@ -1,0 +1,4 @@
+{"req": {"method": "GET", "url": "https://api.example.com/1", "body_hash": "-"}}
+{"resp": {"status": 200, "headers": {}, "body_b64": "dGVzdA=="}}
+{"req": {"url": "https://api.example.com/2", "body_hash": "-"}, "resp": {"status": 200}}
+{"req": {"method": "GET", "url": "https://api.example.com/valid", "body_hash": "-", "headers": {}}, "resp": {"status": 200, "headers": {}, "body_b64": "dmFsaWQ="}}

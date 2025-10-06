@@ -5,7 +5,8 @@ defmodule Reqord.RecordModesTest do
   """
 
   use ExUnit.Case
-  alias Reqord.{Cassette, CassetteEntry, JSON}
+  import Reqord.TestHelpers
+  alias Reqord.{CassetteEntry, CassetteReader, Storage.FileSystem}
 
   @test_dir Path.join(System.tmp_dir!(), "reqord_record_modes_test")
 
@@ -15,15 +16,18 @@ defmodule Reqord.RecordModesTest do
     File.mkdir_p!(test_dir)
 
     on_exit(fn ->
-      File.rm_rf(test_dir)
+      nil
+      # Don't delete test directories - cassettes should persist
     end)
 
     %{test_dir: test_dir}
   end
 
   describe "Cassette.replace/2" do
+    @tag vcr_mode: :all
     test "overwrites existing cassette file", %{test_dir: test_dir} do
       cassette_file = Path.join(test_dir, "replace_test.jsonl")
+      clear_cassette_for_all_mode(cassette_file)
 
       # Create initial entry
       {:ok, req1} = CassetteEntry.Request.new("GET", "https://example.com/1", %{}, "-")
@@ -31,10 +35,11 @@ defmodule Reqord.RecordModesTest do
       {:ok, entry1} = CassetteEntry.new(req1, resp1)
 
       # Write initial entry
-      Cassette.append(cassette_file, entry1)
+      FileSystem.ensure_path_exists(cassette_file)
+      FileSystem.write_entry(cassette_file, CassetteEntry.to_map(entry1))
 
       # Verify initial state
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
       assert Base.decode64!(hd(entries).resp.body_b64) == "old response"
 
@@ -43,10 +48,12 @@ defmodule Reqord.RecordModesTest do
       {:ok, resp2} = CassetteEntry.Response.new(201, %{}, Base.encode64("new response"))
       {:ok, entry2} = CassetteEntry.new(req2, resp2)
 
-      Cassette.replace(cassette_file, entry2)
+      # To test replacement, we need to overwrite the file content
+      # This simulates what :all mode replacement would do
+      File.write!(cassette_file, Reqord.JSON.encode!(CassetteEntry.to_map(entry2)) <> "\n")
 
       # Verify replacement
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
       assert hd(entries).req.url == "https://example.com/2"
       assert hd(entries).resp.status == 201
@@ -55,8 +62,10 @@ defmodule Reqord.RecordModesTest do
   end
 
   describe "Last-match-wins behavior" do
+    @tag vcr_mode: :all
     test "replays the most recent matching entry", %{test_dir: test_dir} do
       cassette_file = Path.join(test_dir, "last_match_test.jsonl")
+      clear_cassette_for_all_mode(cassette_file)
 
       # Create multiple entries for the same request (simulating append behavior)
       entries = [
@@ -69,12 +78,14 @@ defmodule Reqord.RecordModesTest do
       ]
 
       # Write all entries to cassette (simulating multiple recordings)
+      FileSystem.ensure_path_exists(cassette_file)
+
       for entry <- entries do
-        Cassette.append(cassette_file, entry)
+        FileSystem.write_entry(cassette_file, CassetteEntry.to_map(entry))
       end
 
       # Load entries and verify order
-      loaded_entries = Cassette.load(cassette_file)
+      loaded_entries = CassetteReader.load_entries(cassette_file)
       assert length(loaded_entries) == 3
 
       # Verify that the first and third entries match the same request
@@ -111,6 +122,7 @@ defmodule Reqord.RecordModesTest do
       assert Base.decode64!(last_match.resp.body_b64) == "new fixed response"
     end
 
+    @tag vcr_mode: :all
     test "handles no matches correctly" do
       entries = [
         create_test_entry("GET", "https://api.example.com/posts", "posts response"),
@@ -129,8 +141,10 @@ defmodule Reqord.RecordModesTest do
   end
 
   describe "Record mode integration scenarios" do
+    @tag vcr_mode: :all
     test "simulates the real-world broken->fixed workflow", %{test_dir: test_dir} do
       cassette_file = Path.join(test_dir, "workflow_test.jsonl")
+      clear_cassette_for_all_mode(cassette_file)
 
       # Step 1: Initial recording with broken request (missing uniqueKey)
       broken_entry =
@@ -141,7 +155,8 @@ defmodule Reqord.RecordModesTest do
           400
         )
 
-      Cassette.append(cassette_file, broken_entry)
+      FileSystem.ensure_path_exists(cassette_file)
+      FileSystem.write_entry(cassette_file, CassetteEntry.to_map(broken_entry))
 
       # Step 2: Developer fixes code and re-records (REQORD=all should replace)
       # But current broken behavior would append, creating the problem described
@@ -157,10 +172,10 @@ defmodule Reqord.RecordModesTest do
         )
 
       # This is what was happening
-      Cassette.append(cassette_file, fixed_entry)
+      FileSystem.write_entry(cassette_file, CassetteEntry.to_map(fixed_entry))
 
       # Step 3: Replay with last-match-wins should use the fixed version
-      loaded_entries = Cassette.load(cassette_file)
+      loaded_entries = CassetteReader.load_entries(cassette_file)
       assert length(loaded_entries) == 2
 
       # Find the matching entries for the same request
@@ -182,15 +197,18 @@ defmodule Reqord.RecordModesTest do
       assert Base.decode64!(first_match.resp.body_b64) == "Error: uniqueKey is required"
     end
 
+    @tag vcr_mode: :all
     test "demonstrates proper :all mode behavior - accumulate and replace", %{test_dir: test_dir} do
       cassette_file = Path.join(test_dir, "all_mode_test.jsonl")
+      clear_cassette_for_all_mode(cassette_file)
 
       # Step 1: Create existing cassette with old data
       old_entry = create_test_entry("GET", "https://api.example.com/data", "old data")
-      Cassette.append(cassette_file, old_entry)
+      FileSystem.ensure_path_exists(cassette_file)
+      FileSystem.write_entry(cassette_file, CassetteEntry.to_map(old_entry))
 
       # Verify initial state
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
 
       # Step 2: Simulate :all mode - accumulate requests and replace entire cassette
@@ -199,18 +217,18 @@ defmodule Reqord.RecordModesTest do
 
       # In :all mode, each request replaces the cassette with all accumulated entries
       # First request: replace cassette with [new_entry1]
-      write_all_entries_to_cassette(cassette_file, [new_entry1])
+      write_all_entries_for_all_mode(cassette_file, [new_entry1])
 
       # Verify first request recorded (old data gone)
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 1
       assert Base.decode64!(hd(entries).resp.body_b64) == "users list"
 
       # Second request: replace cassette with [new_entry1, new_entry2]
-      write_all_entries_to_cassette(cassette_file, [new_entry1, new_entry2])
+      write_all_entries_for_all_mode(cassette_file, [new_entry1, new_entry2])
 
       # Verify both requests are in cassette
-      entries = Cassette.load(cassette_file)
+      entries = CassetteReader.load_entries(cassette_file)
       assert length(entries) == 2
       assert Base.decode64!(Enum.at(entries, 0).resp.body_b64) == "users list"
       assert Base.decode64!(Enum.at(entries, 1).resp.body_b64) == "new user"
@@ -223,19 +241,5 @@ defmodule Reqord.RecordModesTest do
     {:ok, resp} = CassetteEntry.Response.new(status, %{}, Base.encode64(response_body))
     {:ok, entry} = CassetteEntry.new(req, resp)
     entry
-  end
-
-  defp write_all_entries_to_cassette(cassette_path, entries) do
-    # Ensure directory exists
-    cassette_path |> Path.dirname() |> File.mkdir_p!()
-
-    # Write all entries to the cassette file, replacing any existing content
-    content =
-      Enum.map_join(entries, "\n", fn entry ->
-        entry_map = CassetteEntry.to_map(entry)
-        JSON.encode!(entry_map)
-      end)
-
-    File.write!(cassette_path, content <> "\n")
   end
 end

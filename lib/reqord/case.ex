@@ -93,17 +93,14 @@ defmodule Reqord.Case do
       use ExUnit.Case, unquote(opts)
 
       setup context do
-        # Get configuration from context tags or defaults
         stub_name = context[:req_stub_name] || default_stub_name()
         mode = vcr_mode(context)
         cassette_name = cassette_name(context)
         match_on = context[:match_on] || Application.get_env(:reqord, :match_on, [:method, :uri])
 
-        # Set up Req.Test in private mode
         Req.Test.set_req_test_to_private()
         Req.Test.set_req_test_from_context(context)
 
-        # Install VCR
         Reqord.install!(
           name: stub_name,
           cassette: cassette_name,
@@ -111,48 +108,36 @@ defmodule Reqord.Case do
           match_on: match_on
         )
 
-        # Ensure cassette is flushed on test exit
         ExUnit.Callbacks.on_exit(fn ->
           Reqord.cleanup(cassette_name, mode)
         end)
 
-        # Verify on exit
         Req.Test.verify_on_exit!(context)
 
         :ok
       end
 
-      # Helper to get the default stub name
-      # Override this in your test module if needed
       defp default_stub_name do
-        # Extract the base module name and use it as the stub name
-        # e.g., MyApp.FeatureTest -> MyApp.ReqStub
         module_name = __MODULE__ |> Module.split() |> List.first()
         Module.concat([module_name, "ReqStub"])
       end
 
-      # Get VCR mode from context tag, env var, or app config
       defp vcr_mode(context) do
         cond do
-          # 1. Check for per-test tag override (check both :vcr_mode and :integration_mode)
           context[:vcr_mode] || context[:integration_mode] ->
             context[:vcr_mode] || context[:integration_mode]
 
-          # 2. Check environment variable
           env_mode = System.get_env("REQORD") ->
             parse_mode(env_mode)
 
-          # 3. Check application config
           app_mode = Application.get_env(:reqord, :default_mode) ->
             app_mode
 
-          # 4. Default to :none
           true ->
             :none
         end
       end
 
-      # Parse mode string from environment variable
       defp parse_mode(mode_str) do
         case String.downcase(mode_str) do
           "once" -> :once
@@ -163,15 +148,12 @@ defmodule Reqord.Case do
         end
       end
 
-      # Generate cassette name from context
       defp cassette_name(context) do
-        # Allow override via tag (check both :vcr and :integration for backwards compatibility)
         case context[:vcr] || context[:integration] do
           name when is_binary(name) ->
             name
 
           _ ->
-            # Auto-generate from module and test name
             module_name =
               __MODULE__
               |> Module.split()

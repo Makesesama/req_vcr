@@ -1,0 +1,5 @@
+
+{"req":{"url":"https://api.example.com/test","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"dGVzdA=="}}
+
+{"req":{"url":"https://api.example.com/test","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"dGVzdA=="}}
+

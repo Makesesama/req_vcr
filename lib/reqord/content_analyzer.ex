@@ -63,16 +63,15 @@ defmodule Reqord.ContentAnalyzer do
     content_type = content_type || ""
 
     cond do
-      is_streaming_content?(content_type) ->
+      streaming_content?(content_type) ->
         {:stream, content}
 
-      is_binary_content_type?(content_type) ->
+      binary_content_type?(content_type) ->
         {:binary, content}
 
-      is_text_content_type?(content_type) ->
+      text_content_type?(content_type) ->
         {:text, content}
 
-      # Fallback to heuristic analysis
       true ->
         if appears_binary?(content) do
           {:binary, content}
@@ -100,7 +99,6 @@ defmodule Reqord.ContentAnalyzer do
     case content_type do
       :binary -> size > max_inline_size
       :stream -> size > max_inline_size
-      # Always inline text for now
       :text -> false
     end
   end
@@ -139,24 +137,21 @@ defmodule Reqord.ContentAnalyzer do
 
   # Private functions
 
-  defp is_binary_content_type?(content_type) do
+  defp binary_content_type?(content_type) do
     Enum.any?(@binary_content_types, &String.starts_with?(content_type, &1))
   end
 
-  defp is_text_content_type?(content_type) do
+  defp text_content_type?(content_type) do
     Enum.any?(@text_content_types, &String.starts_with?(content_type, &1))
   end
 
-  defp is_streaming_content?(content_type) do
+  defp streaming_content?(content_type) do
     Enum.any?(@streaming_content_types, &String.starts_with?(content_type, &1))
   end
 
-  # Heuristic binary detection
   defp appears_binary?(content) when byte_size(content) == 0, do: false
 
   defp appears_binary?(content) do
-    # Check for null bytes (strong indicator of binary)
-    # Check for high ratio of non-printable characters
     String.contains?(content, <<0>>) or
       has_high_entropy?(content)
   end
@@ -172,7 +167,6 @@ defmodule Reqord.ContentAnalyzer do
       |> :binary.bin_to_list()
       |> Enum.count(fn byte -> byte < 32 or byte > 126 end)
 
-    # If more than 30% non-printable, likely binary
     non_printable_count / sample_size > 0.3
   end
 

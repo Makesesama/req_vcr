@@ -1,0 +1,5 @@
+{"req": {"method": "GET", "url": "https://api.example.com/valid1", "body_hash": "-", "headers": {}}, "resp": {"status": 200, "headers": {}, "body_b64": "Zmlyc3Q="}}
+{ invalid json here
+{"req": {"method": "GET", "url": "https://api.example.com/valid2", "body_hash": "-", "headers": {}}, "resp": {"status": 200, "headers": {}, "body_b64": "c2Vjb25k"}}
+not json at all!
+{"req": {"method": "GET", "url": "https://api.example.com/valid3", "body_hash": "-", "headers": {}}, "resp": {"status": 200, "headers": {}, "body_b64": "dGhpcmQ="}}

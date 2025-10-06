@@ -1,0 +1,3 @@
+{"recorded_at":100,"req":{"body_hash":"0A041B9462CAA4A31BAC3567E0B6E6FD9100787DB2AB433D96F6D178CABFCE90","headers":{"content-type":"application/json"},"method":"POST","url":"/users"},"resp":{"body_b64":"dXNlcjE=","headers":{"content-type":"application/json"},"status":201}}
+{"recorded_at":150,"req":{"body_hash":"-","headers":{"content-type":"application/json"},"method":"DELETE","url":"/users/1"},"resp":{"body_b64":"ZGVsZXRlZA==","headers":{"content-type":"application/json"},"status":200}}
+{"recorded_at":200,"req":{"body_hash":"6025D18FE48ABD45168528F18A82E265DD98D421A7084AA09F61B341703901A3","headers":{"content-type":"application/json"},"method":"POST","url":"/users"},"resp":{"body_b64":"dXNlcjI=","headers":{"content-type":"application/json"},"status":201}}

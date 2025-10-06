@@ -1,0 +1,2 @@
+{"req":{"url":"https://api.example.com/1","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"Zmlyc3Q="}}
+{"req":{"url":"https://api.example.com/2","headers":{},"method":"GET","body_hash":"-"},"resp":{"status":200,"headers":{},"body_b64":"c2Vjb25k"}}

@@ -30,15 +30,12 @@ defmodule Reqord.Record do
   def record_request(conn, _name, cassette_path, method, url, body, mode) do
     headers = conn.req_headers
 
-    # Make live request and handle the response
     live_response = make_live_request(headers, method, url, body)
     normalized_resp = normalize_response(live_response)
 
-    # Create and store cassette entry
     entry = create_cassette_entry(method, url, headers, body, normalized_resp)
     store_cassette_entry(entry, cassette_path, mode)
 
-    # Return the response
     build_response(conn, live_response, normalized_resp)
   end
 
@@ -82,7 +79,6 @@ defmodule Reqord.Record do
              normalized_resp[:headers],
              normalized_resp[:raw_body]
            ),
-         # Create entry with timestamp
          {:ok, entry} <- CassetteEntry.new(req, resp, System.system_time(:microsecond)) do
       entry
     else
@@ -99,18 +95,14 @@ defmodule Reqord.Record do
         handle_all_mode_storage(entry, cassette_path)
 
       _ ->
-        # Use async writer for better performance
         entry_map = CassetteEntry.to_map(entry)
         Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
     end
   end
 
   defp handle_all_mode_storage(entry, cassette_path) do
-    # In :all mode, we accumulate all entries and replace the entire cassette
-    # at the end of the test session. This prevents premature deletion.
     CassetteState.append_entry(cassette_path, entry)
 
-    # Use async writer to accumulate entries - no premature file operations
     entry_map = CassetteEntry.to_map(entry)
     Reqord.CassetteWriter.write_entry(cassette_path, entry_map)
   end
@@ -123,12 +115,10 @@ defmodule Reqord.Record do
   end
 
   defp normalize_response(response) do
-    # Filter out volatile headers and convert to string values
     headers =
       response.headers
       |> Enum.reject(fn {key, _} -> String.downcase(key) in Config.volatile_headers() end)
       |> Enum.map(fn {key, value} ->
-        # Convert list values to comma-separated string
         string_value =
           case value do
             list when is_list(list) -> Enum.join(list, ", ")
@@ -139,14 +129,12 @@ defmodule Reqord.Record do
       end)
       |> Redactor.redact_headers()
 
-    # Keep raw body for smart encoding detection
     raw_body = Redactor.redact_response_body(response.body || "")
 
     %{
       status: response.status,
       headers: headers,
       raw_body: raw_body,
-      # Keep for backward compatibility in case fallback is needed
       body_b64: Base.encode64(raw_body)
     }
   end

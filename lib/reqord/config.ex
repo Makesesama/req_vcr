@@ -160,10 +160,10 @@ defmodule Reqord.Config do
   end
 
   @doc """
-  Gets the directory path for a given cassette name.
+  Gets the path for a given cassette name.
 
-  Combines the cassette directory with the cassette name and ensures
-  the directory exists.
+  Combines the cassette directory with the cassette name.
+  Does NOT create directories - that's handled by storage backends when needed.
 
   ## Examples
 
@@ -173,7 +173,6 @@ defmodule Reqord.Config do
   @spec cassette_path(String.t()) :: String.t()
   def cassette_path(cassette_name) do
     dir = cassette_dir()
-    File.mkdir_p!(dir)
     Path.join(dir, "#{cassette_name}.jsonl")
   end
 
@@ -309,11 +308,7 @@ defmodule Reqord.Config do
         {:error, "Cassette directory cannot be empty"}
 
       true ->
-        # Try to create the directory to test writability
-        case File.mkdir_p(dir) do
-          :ok -> :ok
-          {:error, reason} -> {:error, "Cannot create cassette directory: #{reason}"}
-        end
+        :ok
     end
   end
 

@@ -6,6 +6,7 @@ defmodule Reqord.LifecycleOrderTest do
 
   use Reqord.Case
   alias Reqord.{CassetteReader, CassetteWriter}
+  import Reqord.TestHelpers
 
   @moduletag :integration
 
@@ -15,7 +16,14 @@ defmodule Reqord.LifecycleOrderTest do
   defp default_stub_name, do: Reqord.LifecycleOrderStub
 
   @tag integration: "LifecycleOrderTest/post_delete_lifecycle_maintains_order"
+  @tag vcr_mode: :all
   test "POST-DELETE lifecycle should maintain correct order" do
+    # Clear cassette to ensure clean start for :all mode
+    cassette_path =
+      "test/support/cassettes/LifecycleOrderTest/post_delete_lifecycle_maintains_order.jsonl"
+
+    clear_cassette_for_all_mode(cassette_path)
+
     # This test simulates a typical create-delete lifecycle
     # where a resource is created with POST and immediately deleted
 
@@ -84,7 +92,12 @@ defmodule Reqord.LifecycleOrderTest do
   end
 
   @tag integration: "LifecycleOrderTest/concurrent_lifecycles_test"
+  @tag vcr_mode: :all
   test "concurrent POST-DELETE lifecycles may get mixed up" do
+    # Clear cassette to ensure clean start for :all mode
+    cassette_path = "test/support/cassettes/LifecycleOrderTest/concurrent_lifecycles_test.jsonl"
+    clear_cassette_for_all_mode(cassette_path)
+
     # This test simulates concurrent requests where multiple lifecycles
     # might interleave, causing order issues
 

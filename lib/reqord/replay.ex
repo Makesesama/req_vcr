@@ -42,11 +42,9 @@ defmodule Reqord.Replay do
         load_base64_body(resp)
 
       "text" ->
-        # Text is still stored as base64
         load_base64_body(resp)
 
       "binary" ->
-        # Inline binary is still stored as base64
         load_base64_body(resp)
 
       "stream" ->
@@ -92,11 +90,9 @@ defmodule Reqord.Replay do
   end
 
   defp load_stream_body(%CassetteEntry.Response{} = resp) do
-    # For basic stream support, check if we have external stream data
     if resp.body_external_ref do
       load_external_stream(resp)
     else
-      # Fallback to inline base64 for simple streams
       load_base64_body(resp)
     end
   end
@@ -107,13 +103,10 @@ defmodule Reqord.Replay do
 
     case storage_backend.load_stream(ref) do
       {:ok, chunks} ->
-        # For instant replay, concatenate all chunks
-        # Future enhancement: replay with timing
-        # 0 = instant
         stream_speed = Application.get_env(:reqord, :stream_speed, 0)
 
         if stream_speed == 0 do
-          body = chunks |> Enum.map(&extract_chunk_data/1) |> Enum.join()
+          body = Enum.map_join(chunks, &extract_chunk_data/1)
           {:ok, body}
         else
           replay_stream_with_timing(chunks, stream_speed)
@@ -139,11 +132,49 @@ defmodule Reqord.Replay do
 
   defp extract_chunk_data(_), do: ""
 
-  # Future enhancement: timing-accurate stream replay
-  defp replay_stream_with_timing(chunks, _speed_multiplier) do
-    # For now, just return concatenated chunks
-    # TODO: Implement actual timing-based replay using GenServer or Task
-    body = chunks |> Enum.map(&extract_chunk_data/1) |> Enum.join()
-    {:ok, body}
+  defp replay_stream_with_timing(chunks, speed_multiplier) do
+    case extract_timestamps_and_data(chunks) do
+      [] ->
+        {:ok, ""}
+
+      [{_first_timestamp, _first_data} | _] = timed_chunks ->
+        parent = self()
+
+        spawn_link(fn ->
+          replay_chunks_with_timing(timed_chunks, speed_multiplier, parent)
+        end)
+
+        body = Enum.map_join(timed_chunks, fn {_ts, data} -> data end)
+        {:ok, body}
+    end
+  end
+
+  defp extract_timestamps_and_data(chunks) do
+    chunks
+    |> Enum.map(&extract_timestamp_and_data/1)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  defp extract_timestamp_and_data(%{"timestamp" => ts, "data" => data}) when is_number(ts) do
+    {ts, data}
+  end
+
+  defp extract_timestamp_and_data({timestamp, data}) when is_number(timestamp) do
+    {timestamp, data}
+  end
+
+  defp extract_timestamp_and_data(_), do: nil
+
+  defp replay_chunks_with_timing([{first_ts, _} | _] = chunks, speed_multiplier, _parent) do
+    chunks
+    |> Enum.reduce(first_ts, fn {timestamp, _data}, prev_timestamp ->
+      delay_ms = max(0, round((timestamp - prev_timestamp) / speed_multiplier))
+
+      if delay_ms > 0 do
+        Process.sleep(delay_ms)
+      end
+
+      timestamp
+    end)
   end
 end

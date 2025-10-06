@@ -160,15 +160,11 @@ defmodule Reqord.CassetteWriter do
         # We have entries to replace the cassette with
         state = cancel_timer(cassette_path, state)
 
-        # Sort entries by timestamp (oldest first)
-        sorted_entries =
-          Enum.sort_by(entries, fn entry ->
-            Map.get(entry, "recorded_at", 0)
-          end)
+        # Sort and replace entire cassette
+        sorted_entries = sort_entries_by_timestamp(entries)
 
-        # Replace entire cassette using delete + create operations
         result =
-          replace_cassette_atomically(cassette_path, sorted_entries, state.config.storage_backend)
+          replace_entire_cassette(cassette_path, sorted_entries, state.config.storage_backend)
 
         # Clear pending writes for this cassette
         state =
@@ -203,6 +199,12 @@ defmodule Reqord.CassetteWriter do
 
   # Private functions
 
+  defp sort_entries_by_timestamp(entries) do
+    Enum.sort_by(entries, fn entry ->
+      Map.get(entry, "recorded_at", 0)
+    end)
+  end
+
   defp flush_cassette_internal(cassette_path, state) do
     case Map.get(state.pending_writes, cassette_path) do
       nil ->
@@ -215,14 +217,8 @@ defmodule Reqord.CassetteWriter do
         # Cancel any existing timer
         state = cancel_timer(cassette_path, state)
 
-        # Sort entries by timestamp (oldest first)
-        sorted_entries =
-          Enum.sort_by(entries, fn entry ->
-            Map.get(entry, "recorded_at", 0)
-          end)
-
-        # Write entries to storage
-        write_entries_to_storage(cassette_path, sorted_entries, state.config.storage_backend)
+        sorted_entries = sort_entries_by_timestamp(entries)
+        append_entries_to_storage(cassette_path, sorted_entries, state.config.storage_backend)
 
         # Clear pending writes for this cassette
         state
@@ -231,7 +227,7 @@ defmodule Reqord.CassetteWriter do
     end
   end
 
-  defp write_entries_to_storage(cassette_path, entries, storage_backend) do
+  defp append_entries_to_storage(cassette_path, entries, storage_backend) do
     Enum.each(entries, fn entry ->
       case storage_backend.write_entry(cassette_path, entry) do
         :ok ->
@@ -243,8 +239,7 @@ defmodule Reqord.CassetteWriter do
     end)
   end
 
-  defp replace_cassette_atomically(cassette_path, entries, storage_backend) do
-    # Never replace with empty entries - this would delete cassette content
+  defp replace_entire_cassette(cassette_path, entries, storage_backend) do
     if Enum.empty?(entries) do
       Logger.warning(
         "Attempted to replace cassette #{cassette_path} with empty entries - operation skipped"
@@ -252,11 +247,8 @@ defmodule Reqord.CassetteWriter do
 
       :ok
     else
-      # Simple approach: delete existing cassette, then write all entries
-      # This follows the basic operations principle
       with :ok <- storage_backend.delete_cassette(cassette_path),
            :ok <- storage_backend.ensure_path_exists(cassette_path) do
-        # Write each entry using the basic write_entry operation
         Enum.reduce_while(entries, :ok, fn entry, :ok ->
           case storage_backend.write_entry(cassette_path, entry) do
             :ok -> {:cont, :ok}
@@ -272,10 +264,8 @@ defmodule Reqord.CassetteWriter do
   end
 
   defp reset_timer(cassette_path, state) do
-    # Cancel existing timer if any
     state = cancel_timer(cassette_path, state)
 
-    # Start new timer
     timer_ref =
       Process.send_after(
         self(),

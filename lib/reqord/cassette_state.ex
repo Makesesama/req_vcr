@@ -109,6 +109,21 @@ defmodule Reqord.CassetteState do
     GenServer.cast(name, :clear)
   end
 
+  @doc """
+  Resets the replay position to 0 for a cassette.
+  """
+  @spec reset_replay_position(String.t()) :: :ok
+  def reset_replay_position(cassette_path) do
+    name = state_name(cassette_path)
+
+    # Ensure GenServer exists
+    unless Process.whereis(name) do
+      start_for_cassette(cassette_path)
+    end
+
+    GenServer.cast(name, :reset_position)
+  end
+
   # GenServer Callbacks
 
   @impl true
@@ -141,6 +156,11 @@ defmodule Reqord.CassetteState do
   @impl true
   def handle_cast(:advance_position, {entries, position}) do
     {:noreply, {entries, position + 1}}
+  end
+
+  @impl true
+  def handle_cast(:reset_position, {entries, _position}) do
+    {:noreply, {entries, 0}}
   end
 
   # Private functions
