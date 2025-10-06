@@ -129,7 +129,7 @@ defmodule Reqord.Storage.FileSystem do
 
     case ensure_path_exists(stream_path) do
       :ok ->
-        # Encode chunks as JSONL for easy parsing
+        # Encode chunks as JSON Lines format (newline-delimited JSON) for easy parsing
         content = Enum.map_join(chunks, "\n", &JSON.encode!/1)
 
         case File.write(stream_path, content) do

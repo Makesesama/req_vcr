@@ -206,7 +206,7 @@ defmodule Reqord.CassetteEntry do
       # Generate content hash for external storage
       content_hash = :crypto.hash(:sha256, content) |> Base.encode16(case: :lower)
 
-      # Store the content externally (implementation will be added to storage backend)
+      # Store the content externally using the configured storage backend
       storage_backend = Application.get_env(:reqord, :storage_backend, Reqord.Storage.FileSystem)
 
       case storage_backend.store_object(content_hash, content) do

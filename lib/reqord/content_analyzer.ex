@@ -152,7 +152,7 @@ defmodule Reqord.ContentAnalyzer do
   defp appears_binary?(content) when byte_size(content) == 0, do: false
 
   defp appears_binary?(content) do
-    String.contains?(content, <<0>>) or
+    :binary.match(content, <<0>>) != :nomatch or
       has_high_entropy?(content)
   end
 
