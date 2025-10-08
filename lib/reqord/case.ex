@@ -193,6 +193,7 @@ defmodule Reqord.Case do
   defmacro __using__(opts) do
     quote bind_quoted: [opts: opts] do
       use ExUnit.Case, Keyword.drop(opts, [:cassette_path_builder])
+      import Reqord.RedactCassette
 
       # Store the named builder from use options
       @cassette_path_builder_name opts[:cassette_path_builder]

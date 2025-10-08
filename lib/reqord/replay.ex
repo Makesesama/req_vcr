@@ -9,13 +9,17 @@ defmodule Reqord.Replay do
   Replays a response from a cassette entry with support for different body encodings.
   """
   @spec replay_response(Plug.Conn.t(), CassetteEntry.t()) :: Plug.Conn.t()
-  def replay_response(conn, %CassetteEntry{resp: resp}) do
-    case load_response_body(resp) do
+  def replay_response(conn, %CassetteEntry{} = entry) do
+    # Apply custom redaction if configured
+    redacted_entry = apply_custom_redaction(entry)
+    redacted_resp = redacted_entry.resp
+
+    case load_response_body(redacted_resp) do
       {:ok, body} ->
         conn
-        |> Plug.Conn.put_status(resp.status)
-        |> Reqord.put_resp_headers(resp.headers)
-        |> Plug.Conn.resp(resp.status, body)
+        |> Plug.Conn.put_status(redacted_resp.status)
+        |> Reqord.put_resp_headers(redacted_resp.headers)
+        |> Plug.Conn.resp(redacted_resp.status, body)
 
       {:error, reason} ->
         require Logger
@@ -23,9 +27,19 @@ defmodule Reqord.Replay do
 
         # Fallback to empty response to avoid crashing
         conn
-        |> Plug.Conn.put_status(resp.status)
-        |> Reqord.put_resp_headers(resp.headers)
-        |> Plug.Conn.resp(resp.status, "")
+        |> Plug.Conn.put_status(redacted_resp.status)
+        |> Reqord.put_resp_headers(redacted_resp.headers)
+        |> Plug.Conn.resp(redacted_resp.status, "")
+    end
+  end
+
+  defp apply_custom_redaction(entry) do
+    case Reqord.RedactCassette.get_current_redactor() do
+      nil ->
+        entry
+
+      _redaction_config ->
+        Reqord.RedactCassette.apply_redaction(entry)
     end
   end
 

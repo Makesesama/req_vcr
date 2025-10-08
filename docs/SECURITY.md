@@ -126,24 +126,217 @@ mix reqord.edit cassette.jsonl --entry 0
 mix reqord.edit cassette.jsonl --grep "/users"
 ```
 
-**Future:** Programmatic response redaction will be added in a future release:
+## Automatic Programmatic Redaction
+
+For advanced redaction scenarios, use the `redact_cassette` macro to define custom redaction functions that run automatically during recording and replay:
+
+### Basic Usage
 
 ```elixir
-# Coming soon - not yet implemented
-test "user data" do
-  {:ok, resp} = Reqord.redact(Req.get(url), fn body ->
-    body
-    |> Map.put("email", "[REDACTED]")
-    |> Map.put("ssn", "[REDACTED]")
-  end)
+defmodule MyApp.APITest do
+  use Reqord.Case
+  import Reqord.RedactCassette
 
-  assert resp.body["name"] == "John Doe"
+  test "user data with automatic redaction" do
+    redact_cassette redactor: &user_redactor/1 do
+      client = Req.new(plug: {Req.Test, MyApp.ReqStub})
+      {:ok, resp} = Req.get(client, url: "/api/users/123")
+
+      # Test sees redacted data for consistency
+      assert resp.body["email"] == "[EMAIL_REDACTED]"
+      assert resp.body["name"] == "John Doe"  # not redacted
+    end
+  end
+
+  # Define custom redaction function
+  defp user_redactor(_context) do
+    %{
+      response_body_json: fn json_data ->
+        json_data
+        |> Map.put("email", "[EMAIL_REDACTED]")
+        |> Map.put("ssn", "[SSN_REDACTED]")
+      end,
+      request_headers: fn headers ->
+        Map.put(headers, "x-api-key", "[API_KEY_REDACTED]")
+      end
+    }
+  end
 end
 ```
 
+### Redaction Function Types
+
+The `redact_cassette` macro supports different types of redaction:
+
+```elixir
+%{
+  # JSON response bodies (automatic encoding/decoding)
+  response_body_json: fn json_data ->
+    Map.put(json_data, "secret", "[REDACTED]")
+  end,
+
+  # Raw binary response bodies (full control)
+  response_body_raw: fn body ->
+    String.replace(body, "sensitive_pattern", "[REDACTED]")
+  end,
+
+  # Request headers
+  request_headers: fn headers ->
+    Map.put(headers, "authorization", "[AUTH_REDACTED]")
+  end,
+
+  # Response headers
+  response_headers: fn headers ->
+    Map.put(headers, "set-cookie", "[COOKIE_REDACTED]")
+  end,
+
+  # URLs (including query parameters)
+  url: fn url ->
+    URI.parse(url)
+    |> Map.update(:query, nil, fn query ->
+      if query do
+        query
+        |> URI.decode_query()
+        |> Map.put("token", "[TOKEN_REDACTED]")
+        |> URI.encode_query()
+      else
+        nil
+      end
+    end)
+    |> URI.to_string()
+  end
+}
+```
+
+### Named Redactors
+
+Define reusable redactors in your application config:
+
+```elixir
+# config/test.exs
+config :reqord,
+  redactors: %{
+    user_api: fn _context ->
+      %{
+        response_body_json: &MyApp.Redactors.redact_user_data/1,
+        request_headers: &MyApp.Redactors.redact_auth_headers/1
+      }
+    end,
+    financial_api: fn _context ->
+      %{
+        response_body_json: fn json_data ->
+          json_data
+          |> Map.put("account_number", "[ACCOUNT_REDACTED]")
+          |> Map.put("ssn", "[SSN_REDACTED]")
+        end
+      }
+    end
+  }
+```
+
+Then use them in tests:
+
+```elixir
+test "user API call" do
+  redact_cassette redactor: :user_api do
+    # test code
+  end
+end
+```
+
+### Complex Nested Redaction
+
+Handle deeply nested data structures:
+
+```elixir
+defp nested_redactor(_context) do
+  %{
+    response_body_json: &redact_nested_secrets/1
+  }
+end
+
+defp redact_nested_secrets(data) when is_map(data) do
+  Enum.reduce(data, %{}, fn {key, value}, acc ->
+    cond do
+      key in ["email", "api_key", "secret", "token", "password"] ->
+        Map.put(acc, key, "[#{String.upcase(key)}_REDACTED]")
+
+      is_map(value) ->
+        Map.put(acc, key, redact_nested_secrets(value))
+
+      is_list(value) ->
+        Map.put(acc, key, Enum.map(value, &redact_nested_secrets/1))
+
+      true ->
+        Map.put(acc, key, value)
+    end
+  end)
+end
+
+defp redact_nested_secrets(data), do: data
+```
+
+### Inline Redaction Functions
+
+For simple cases, define redaction inline:
+
+```elixir
+test "simple redaction" do
+  redact_cassette redactor: fn _context ->
+    %{
+      response_body_json: fn json_data ->
+        Map.put(json_data, "email", "[REDACTED]")
+      end
+    }
+  end do
+    # test code
+  end
+end
+```
+
+### Key Benefits
+
+- **Automatic Application**: Redaction runs during both recording and replay
+- **JSON-Aware**: Automatic JSON detection and encoding/decoding
+- **Configurable JSON Backend**: Uses your configured `Reqord.JSON` library
+- **Consistent Testing**: Tests see redacted data for predictable assertions
+- **No Manual Editing**: No need to manually edit cassettes after recording
+- **Reusable**: Named redactors can be shared across multiple tests
+
 ## Best Practices
 
-### 1. Review Cassettes Before Committing
+### 1. Prefer Automatic Redaction
+
+Use the `redact_cassette` macro for consistent, automated redaction:
+
+```elixir
+# ✅ Good - Automatic redaction
+test "api call" do
+  redact_cassette redactor: :user_api do
+    # API call - redaction applied automatically
+  end
+end
+
+# ❌ Less ideal - Manual editing required
+test "api call" do
+  # API call - requires manual cassette editing afterward
+end
+```
+
+### 2. Use Named Redactors for Consistency
+
+Define reusable redactors in config to ensure consistency across your test suite:
+
+```elixir
+# config/test.exs
+config :reqord,
+  redactors: %{
+    user_api: fn _context -> %{response_body_json: &redact_user_data/1} end,
+    payment_api: fn _context -> %{response_body_json: &redact_payment_data/1} end
+  }
+```
+
+### 3. Review Cassettes Before Committing
 
 Always review new cassettes before committing:
 
@@ -151,11 +344,11 @@ Always review new cassettes before committing:
 # After recording new cassettes
 git diff test/support/cassettes/
 
-# Check for sensitive data
+# Check for sensitive data (even with automatic redaction)
 grep -r "secret\|password\|token" test/support/cassettes/
 ```
 
-### 2. Use Environment Variables
+### 4. Use Environment Variables
 
 Never hardcode secrets in tests:
 
@@ -172,7 +365,7 @@ test "api call" do
 end
 ```
 
-### 3. Add Cassettes to .gitignore (When Necessary)
+### 5. Add Cassettes to .gitignore (When Necessary)
 
 For highly sensitive projects, consider not committing cassettes:
 
@@ -184,7 +377,7 @@ test/support/cassettes/
 
 Then record cassettes locally during development.
 
-### 4. Use Different Keys for Tests
+### 6. Use Different Keys for Tests
 
 Use separate API keys for testing that have limited permissions:
 
@@ -194,7 +387,7 @@ config :my_app,
   api_key: System.get_env("TEST_API_KEY") || "test-key-with-limited-access"
 ```
 
-### 5. Sanitize Object Storage
+### 7. Sanitize Object Storage
 
 If using external object storage for binaries, ensure sensitive files are redacted:
 
@@ -260,13 +453,12 @@ fi
 - Cookie headers
 - URL auth (`user:pass@`)
 
-### ⚠️ Requires Manual Redaction
+### ⚠️ May Require Custom Redaction
 
-- Custom auth query params
-- Secrets in request/response bodies
-- Custom auth headers
+- Application-specific sensitive fields in response bodies
+- Custom auth query params not covered by defaults
 - Binary files with embedded secrets
-- API responses containing sensitive PII
+- Complex nested data structures with sensitive information
 
 ## Example Configuration
 
@@ -345,10 +537,12 @@ git log --all --full-history -- "test/support/cassettes/leaked.jsonl"
 
 ## Summary
 
-1. **Automatic redaction** handles common auth patterns
-2. **Review cassettes** before committing
-3. **Use environment variables** for secrets in tests
-4. **Add pre-commit hooks** to catch leaks
-5. **Rotate secrets** if leaked
+1. **Use `redact_cassette` macro** for automatic, programmatic redaction
+2. **Automatic redaction** handles common auth patterns by default
+3. **Named redactors** provide consistency across your test suite
+4. **Review cassettes** before committing (even with automatic redaction)
+5. **Use environment variables** for secrets in tests
+6. **Add pre-commit hooks** to catch leaks
+7. **Rotate secrets** if leaked
 
-For most projects, Reqord's automatic redaction is sufficient. For projects using custom auth names, combine automatic redaction with manual review and custom sanitization.
+For most projects, combine Reqord's built-in automatic redaction with the `redact_cassette` macro for application-specific sensitive data. This provides comprehensive protection without manual cassette editing.

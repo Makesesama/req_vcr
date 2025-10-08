@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automatic Redaction System** - ExVCR-style `redact_cassette` macro for programmatic data redaction
+  - **`redact_cassette` Macro** - Wrap API calls to automatically redact sensitive data during recording and replay
+  - **User-Defined Redaction Functions** - Custom functions for `response_body_json`, `response_body_raw`, `request_headers`, `response_headers`, and `url` redaction
+  - **JSON-Aware Redaction** - Automatic JSON detection and encoding/decoding using configurable `Reqord.JSON` behavior
+  - **Named Redactors** - Define reusable redaction configurations in application config and reference by name
+  - **Flexible Function Support** - Inline functions, named functions, module/function tuples, and config-based redactors
+  - **Bidirectional Application** - Redaction applied during both recording (to cassettes) and replay (to test responses) for consistency
+  - **Content-Type Detection** - Smart detection of JSON vs binary content for appropriate redaction handling
 - **Object and Streaming Support** - Comprehensive support for binary data and streaming responses
   - **Smart Content Detection** - Automatic detection of binary vs text content based on Content-Type headers and heuristics
   - **External Object Storage** - Large binary objects stored externally to prevent JSONL bloat
@@ -33,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Shared `Reqord.Tasks.Helpers` module reduces code duplication across tasks
 
 ### Changed
+- **Enhanced Manual Redaction** - Improved `mix reqord.edit` task to work seamlessly with automatic redaction system
 - **Enhanced Response Creation** - New `CassetteEntry.Response.new_with_raw_body/3` for automatic encoding detection
 - **Improved Replay System** - Enhanced body loading with support for external storage and streaming content
 - **Extended Configuration** - New config options for max_inline_size, object_directory, binary_storage, and stream_speed

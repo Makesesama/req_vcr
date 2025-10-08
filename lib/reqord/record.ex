@@ -80,12 +80,23 @@ defmodule Reqord.Record do
              normalized_resp[:raw_body]
            ),
          {:ok, entry} <- CassetteEntry.new(req, resp, System.system_time(:microsecond)) do
-      entry
+      # Apply custom redaction if configured
+      apply_custom_redaction(entry)
     else
       {:error, reason} ->
         require Logger
         Logger.error("Failed to create cassette entry: #{reason}")
         raise "Cassette entry creation failed: #{reason}"
+    end
+  end
+
+  defp apply_custom_redaction(entry) do
+    case Reqord.RedactCassette.get_current_redactor() do
+      nil ->
+        entry
+
+      _redaction_config ->
+        Reqord.RedactCassette.apply_redaction(entry)
     end
   end
 
