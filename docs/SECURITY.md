@@ -86,20 +86,58 @@ config :reqord,
 
 ### Redact Response Bodies
 
-For sensitive data in response bodies, use a custom filter:
+For sensitive data in response bodies (like emails, account IDs, or PII), use the `mix reqord.edit` task:
+
+```bash
+# Record cassette normally
+REQORD=new_episodes mix test test/my_app/account_test.exs
+
+# Edit the cassette to redact sensitive data
+mix reqord.edit AccountTest/fetches_user.jsonl
+```
+
+In your editor, modify the response body:
+
+```json
+{
+  "req": { ... },
+  "resp": {
+    "status": 200,
+    "body": "{\"name\":\"John Doe\",\"email\":\"[REDACTED]\",\"ssn\":\"[REDACTED]\"}"
+  }
+}
+```
+
+The task handles JSONL parsing and validation automatically.
+
+**Workflow:**
+1. Record cassette with real data (`REQORD=new_episodes mix test`)
+2. Edit cassette to redact sensitive fields (`mix reqord.edit cassette.jsonl`)
+3. Verify cassette still works (`mix test`)
+4. Commit redacted cassette to git
+
+**Edit specific entries:**
+
+```bash
+# Edit only the first entry (0-based index)
+mix reqord.edit cassette.jsonl --entry 0
+
+# Edit entries matching a URL pattern
+mix reqord.edit cassette.jsonl --grep "/users"
+```
+
+**Future:** Programmatic response redaction will be added in a future release:
 
 ```elixir
-# Not currently built-in - manual approach:
-
+# Coming soon - not yet implemented
 test "user data" do
-  {:ok, resp} = Req.get(url)
-
-  # Store sanitized version for assertions
-  sanitized_body = resp.body
+  {:ok, resp} = Reqord.redact(Req.get(url), fn body ->
+    body
+    |> Map.put("email", "[REDACTED]")
     |> Map.put("ssn", "[REDACTED]")
-    |> Map.put("credit_card", "[REDACTED]")
+  end)
 
-  assert sanitized_body["name"] == "John Doe"
+  assert resp.body["name"] == "John Doe"
 end
 ```
 

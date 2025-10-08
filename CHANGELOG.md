@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Macro Context Support** - New `Reqord.Case.set_cassette_context/1` for passing compile-time variables to path builders
   - **Priority System** - Clear precedence: vcr_path > named builder > global builder > vcr tag > default
   - **Documentation** - Comprehensive guides in `docs/CASSETTE_ORGANIZATION.md` and `docs/MACRO_SUPPORT.md`
+- **Manual Cassette Editing** - New `mix reqord.edit` task for redacting sensitive data
+  - Opens cassettes in your editor with automatic JSONL parsing and formatting
+  - Validates JSON structure after editing before saving
+  - Filter by entry index or URL pattern
+  - Useful for redacting emails, account IDs, and other PII from response bodies
 
 ### Changed
 - **Enhanced Response Creation** - New `CassetteEntry.Response.new_with_raw_body/3` for automatic encoding detection
