@@ -2,7 +2,7 @@ defmodule Reqord.RedactCassetteUnitTest do
   use ExUnit.Case
   import Reqord.RedactCassette
 
-  alias Reqord.{CassetteEntry}
+  alias Reqord.CassetteEntry
 
   describe "redact_cassette functionality" do
     test "resolve_redactor with inline function" do

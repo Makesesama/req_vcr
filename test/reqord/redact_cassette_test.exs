@@ -161,14 +161,7 @@ defmodule Reqord.RedactCassetteTest do
     Enum.reduce(data, %{}, fn {key, value}, acc ->
       cond do
         key in ["email", "api_key", "secret", "token"] ->
-          redacted_value =
-            case key do
-              "email" -> "[EMAIL_REDACTED]"
-              "api_key" -> "[API_KEY_REDACTED]"
-              "secret" -> "[SECRET_REDACTED]"
-              "token" -> "[TOKEN_REDACTED]"
-            end
-
+          redacted_value = get_redacted_value(key)
           Map.put(acc, key, redacted_value)
 
         is_map(value) ->
@@ -184,4 +177,9 @@ defmodule Reqord.RedactCassetteTest do
   end
 
   defp redact_nested_secrets(data), do: data
+
+  defp get_redacted_value("email"), do: "[EMAIL_REDACTED]"
+  defp get_redacted_value("api_key"), do: "[API_KEY_REDACTED]"
+  defp get_redacted_value("secret"), do: "[SECRET_REDACTED]"
+  defp get_redacted_value("token"), do: "[TOKEN_REDACTED]"
 end

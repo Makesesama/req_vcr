@@ -339,32 +339,25 @@ defmodule Reqord.RedactCassette do
   end
 
   defp get_response_body(entry) do
-    case entry.resp.body_encoding || "base64" do
-      "base64" ->
-        if entry.resp.body_b64 && entry.resp.body_b64 != "" do
-          case Base.decode64(entry.resp.body_b64) do
-            {:ok, body} -> {:ok, body}
-            :error -> {:error, :invalid_base64}
-          end
-        else
-          {:ok, ""}
-        end
+    encoding = entry.resp.body_encoding || "base64"
 
-      "text" ->
-        # For text encoding, the content is still stored in body_b64
-        if entry.resp.body_b64 && entry.resp.body_b64 != "" do
-          case Base.decode64(entry.resp.body_b64) do
-            {:ok, body} -> {:ok, body}
-            :error -> {:error, :invalid_base64}
-          end
-        else
-          {:ok, ""}
-        end
+    case encoding do
+      encoding when encoding in ["base64", "text"] ->
+        decode_base64_body(entry.resp.body_b64)
 
       _ ->
         {:error, :unsupported_encoding}
     end
   end
+
+  defp decode_base64_body(body_b64) when is_binary(body_b64) and body_b64 != "" do
+    case Base.decode64(body_b64) do
+      {:ok, body} -> {:ok, body}
+      :error -> {:error, :invalid_base64}
+    end
+  end
+
+  defp decode_base64_body(_), do: {:ok, ""}
 
   defp put_response_body(entry, new_body) do
     case entry.resp.body_encoding || "base64" do
@@ -384,7 +377,7 @@ defmodule Reqord.RedactCassette do
     # Check if content-type indicates JSON
     content_type = get_content_type(headers)
 
-    if is_json_content_type?(content_type) do
+    if json_content_type?(content_type) do
       Reqord.JSON.decode(body)
     else
       {:error, :not_json}
@@ -399,7 +392,7 @@ defmodule Reqord.RedactCassette do
       ""
   end
 
-  defp is_json_content_type?(content_type) do
+  defp json_content_type?(content_type) do
     content_type =~ ~r/application\/json|text\/json/i
   end
 end

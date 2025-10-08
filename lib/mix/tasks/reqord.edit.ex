@@ -185,9 +185,7 @@ defmodule Mix.Tasks.Reqord.Edit do
   end
 
   defp format_entries_for_editing(entries) do
-    entries
-    |> Enum.map(&Jason.encode!(&1, pretty: true))
-    |> Enum.join("\n---\n")
+    Enum.map_join(entries, "\n---\n", &Jason.encode!(&1, pretty: true))
     |> Kernel.<>("\n")
   end
 

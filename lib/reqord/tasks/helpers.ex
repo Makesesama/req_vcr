@@ -168,8 +168,7 @@ defmodule Reqord.Tasks.Helpers do
   def write_entries(path, entries) do
     content =
       entries
-      |> Enum.map(&Jason.encode!/1)
-      |> Enum.join("\n")
+      |> Enum.map_join("\n", &Jason.encode!/1)
       |> Kernel.<>("\n")
 
     File.write!(path, content)
