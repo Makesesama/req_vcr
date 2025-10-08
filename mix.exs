@@ -75,6 +75,9 @@ defmodule Reqord.MixProject do
       extras: [
         "README.md",
         "CHANGELOG.md",
+        "docs/GETTING_STARTED.md",
+        "docs/SECURITY.md",
+        "docs/ADVANCED_CONFIGURATION.md",
         "docs/CASSETTE_ORGANIZATION.md",
         "docs/MACRO_SUPPORT.md"
       ],

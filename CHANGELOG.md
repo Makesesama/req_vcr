@@ -28,6 +28,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved Replay System** - Enhanced body loading with support for external storage and streaming content
 - **Extended Configuration** - New config options for max_inline_size, object_directory, binary_storage, and stream_speed
 - **Documentation Organization** - Moved guide documents to `docs/` directory and added to hex docs
+- **README Simplification** - Streamlined README to focus on quick start and core features
+  - Split detailed content into focused guides (Getting Started, Security, Advanced Configuration)
+  - Reduced from 691 to ~250 lines for better new-user experience
+  - Added clear navigation to comprehensive documentation
+- **New Documentation Guides**
+  - **Getting Started Guide** - Simple, beginner-friendly introduction with security basics
+  - **Security Guide** - Comprehensive redaction documentation with best practices, pre-commit hooks, and emergency procedures
+  - **Advanced Configuration Guide** - Detailed feature documentation for request matching, binary data, streaming, and performance tuning
 
 ## [0.3.0] - 2025-10-05
 

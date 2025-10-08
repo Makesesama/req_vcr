@@ -7,685 +7,243 @@
 [![Hex.pm Version][hex-img]](https://hex.pm/packages/reqord)
 [![waffle documentation][hexdocs-img]](https://hexdocs.pm/reqord)
 
-VCR-style HTTP recording and replay for Elixir's [Req](https://hexdocs.pm/req) library, with zero application code changes required.
-
-Reqord integrates seamlessly with `Req.Test` to automatically record HTTP interactions to cassette files and replay them in your tests. Perfect for testing applications that interact with external APIs.
+VCR-style HTTP recording and replay for Elixir's [Req](https://hexdocs.pm/req) library. Record HTTP interactions once, replay them in tests forever—no external dependencies, fast tests, deterministic results.
 
 ## Features
 
-- **Zero app code changes** - Works entirely through `Req.Test` integration
-- **Chronological ordering** - Timestamp-based replay ensures requests play back in correct order
-- **Async performance** - Non-blocking cassette writes with automatic batching
-- **Four modes** - Replay (default), Record, Auto (record on miss), and All (re-record)
-- **Smart matching** - Requests matched by method, normalized URL, and body hash
-- **Automatic redaction** - Auth headers and query params are automatically redacted
-- **Concurrent tests** - Full support for async ExUnit tests with private ownership
-- **Spawned processes** - Easy allowance API for Tasks and spawned processes
-- **Pluggable storage** - Extensible storage backend system for future S3/Redis support
+- **Zero app code changes** - Works through `Req.Test` integration
+- **Fast tests** - Replay from cassettes, no network calls
+- **Chronological ordering** - Timestamp-based replay for concurrent requests
+- **Four modes** - Replay (default), Record new, Auto-record, Re-record all
+- **Binary & streaming** - Handles images, PDFs, SSE, chunked responses
+- **Flexible organization** - Named builders, custom paths, macro support
+- **Test-friendly** - Works with async tests and spawned processes
 
-## Installation
+## Quick Start
 
-Add `reqord` to your list of dependencies in `mix.exs`:
+### Installation
 
 ```elixir
 def deps do
   [
     {:req, "~> 0.5"},
-    {:reqord, "~> 0.3.0"},
-    {:jason, "~> 1.4"}  # Required for default JSON adapter
+    {:reqord, "~> 0.3.0"}
   ]
 end
 ```
 
-**Note**: `jason` is an optional dependency. If you want to use a different JSON library, configure it as shown in the [Advanced Configuration](#custom-json-library) section.
-
-## Setup
-
-### 1. Configure Req to use Req.Test in your test environment
-
-In `config/test.exs`:
-
-```elixir
-# If you're building a library that uses Req
-config :my_app,
-  req_options: [plug: {Req.Test, MyApp.ReqStub}]
-
-# Then in your application code, use these options:
-Req.new(Application.get_env(:my_app, :req_options, []))
-```
-
-Or if you're using Req directly in tests:
-
-```elixir
-# In your test setup
-Req.new(plug: {Req.Test, MyApp.ReqStub})
-```
-
-### 2. Use Reqord.Case in your tests
+### Basic Usage
 
 ```elixir
 defmodule MyApp.APITest do
-  use Reqord.Case
-
-  # Your Req.Test stub name (must match the one in config)
-  defp default_stub_name, do: MyApp.ReqStub
+  use Reqord.Case  # Instead of: use ExUnit.Case
 
   test "fetches user data" do
-    # This request will be recorded/replayed automatically
-    {:ok, response} = Req.get(client(), url: "/users/123")
+    {:ok, response} = Req.get("https://api.example.com/users/1")
+
     assert response.status == 200
     assert response.body["name"] == "John Doe"
   end
-
-  defp client do
-    Req.new(Application.get_env(:my_app, :req_options, []))
-  end
 end
 ```
 
-## Usage
-
-### Record Modes
-
-Reqord supports Ruby VCR-style record modes. Control via environment variable, config, or test tags.
-
-#### Available Modes
-
-- **`:once`** (default) - Strict replay. Use existing cassette, raise on new requests
-- **`:new_episodes`** - Append mode. Replay existing, record new requests  
-- **`:all`** - Always re-record. Ignores cassette, hits live network
-- **`:none`** - Never record. Must have complete cassette
-
-#### Environment Variable
+### Record Cassettes
 
 ```bash
-# Once mode (default) - strict replay
-REQORD=once mix test
-
-# New episodes mode - append new recordings
+# Record on first run
 REQORD=new_episodes mix test
 
-# All mode - always re-record everything
-REQORD=all API_TOKEN=xxx mix test
-
-# None mode - never record, never hit network
-REQORD=none mix test
+# Subsequent runs replay from cassettes (no network calls)
+mix test
 ```
 
-#### Application Config
+**That's it!** Your tests now use recorded cassettes. 🎉
 
-```elixir
-# config/test.exs
-config :reqord, default_mode: :once
-```
+## Recording Modes
 
-#### Per-Test Override
+Control how Reqord handles cassettes:
+
+| Mode | Environment Variable | Behavior |
+|------|---------------------|----------|
+| **Replay** | `REQORD=none` (default) | Use cassettes, never hit network |
+| **Record new** | `REQORD=new_episodes` | Replay existing, record new requests |
+| **Strict** | `REQORD=once` | Replay only, raise on missing cassettes |
+| **Re-record** | `REQORD=all` | Always hit network, re-record everything |
+
+### Per-Test Mode
 
 ```elixir
 @tag vcr_mode: :new_episodes
-test "allows new recordings" do
-  # This test will record new requests
+test "can record new requests" do
+  # This test can record even if REQORD=none globally
 end
 ```
 
-### Cassette Naming and Organization
+## Cassette Organization
 
-Reqord provides flexible cassette organization to match your project structure.
-
-#### Default Naming
-
-Cassettes are automatically named based on your test module and test name:
+### Default: Module/Test Name
 
 ```elixir
 defmodule MyApp.UserAPITest do
   use Reqord.Case
 
-  # Creates cassette: test/support/cassettes/UserAPI/fetches_user_list.jsonl
-  test "fetches user list" do
-    # ...
+  test "creates user" do
+    # Cassette: test/support/cassettes/UserAPI/creates_user.jsonl
   end
 end
 ```
 
-#### Custom Organization
+### Custom Name
 
-For complex projects (e.g., LLM testing with multiple providers/models), use organized cassette structures.
+```elixir
+@tag vcr: "my_custom_name"
+test "example" do
+  # Cassette: test/support/cassettes/my_custom_name.jsonl
+end
+```
 
-**Named Builders (Recommended):**
-
-Define reusable builders in config and reference them by name:
+### Named Builders (Recommended for Complex Projects)
 
 ```elixir
 # config/test.exs
 config :reqord,
   cassette_path_builders: %{
-    llm_provider: fn context ->
-      provider = get_in(context, [:macro_context, :provider]) || "default"
-      model = get_in(context, [:macro_context, :model]) || "default"
-      "providers/#{provider}/#{model}/#{context.test}"
-    end,
-    api: fn context -> "api/#{context.test}" end
+    api: fn context -> "api/#{context.test}" end,
+    llm: fn context ->
+      provider = get_in(context, [:macro_context, :provider])
+      "providers/#{provider}/#{context.test}"
+    end
   }
 
-# LLM tests use llm_provider builder
-defmodule MyApp.LLMTest do
-  use Reqord.Case, cassette_path_builder: :llm_provider
-
-  # Cassettes organized as: providers/google/gemini-flash/test_name.jsonl
-end
-
-# API tests use api builder
-defmodule MyApp.APITest do
+# In tests
+defmodule APITest do
   use Reqord.Case, cassette_path_builder: :api
-
-  # Cassettes organized as: api/test_name.jsonl
 end
 
-# Utility tests use default naming
-defmodule MyApp.UtilsTest do
-  use Reqord.Case
-
-  # Cassettes organized as: Utils/test_name.jsonl
+defmodule LLMTest do
+  use Reqord.Case, cassette_path_builder: :llm
 end
 ```
 
-#### Explicit Paths
+## Documentation
 
-Override the path for specific tests:
+### Guides
 
-```elixir
-@tag vcr_path: "providers/openai/gpt-4/streaming"
-test "streams response" do
-  # Creates: test/support/cassettes/providers/openai/gpt-4/streaming.jsonl
-end
-```
+- **[Getting Started](docs/GETTING_STARTED.md)** - Installation and basic usage
+- **[Security](docs/SECURITY.md)** - Redacting secrets and keeping cassettes safe
+- **[Advanced Configuration](docs/ADVANCED_CONFIGURATION.md)** - Matchers, binary data, streaming, etc.
+- **[Cassette Organization](docs/CASSETTE_ORGANIZATION.md)** - Named builders, custom paths, patterns
+- **[Macro Support](docs/MACRO_SUPPORT.md)** - Handle macro-generated tests
+- **[File Management](docs/FILE_MANAGEMENT.md)** - Cassette format and storage
 
-#### Macro-Generated Tests
+### Common Tasks
 
-For tests generated by macros, use `set_cassette_context`:
-
-```elixir
-for model <- ["gpt-4", "gemini-flash"] do
-  @model model
-
-  describe "#{model}" do
-    setup do
-      Reqord.Case.set_cassette_context(%{model: @model})
-      :ok
-    end
-
-    test "generates text" do
-      # Each model gets its own cassette
-    end
-  end
-end
-```
-
-See [CASSETTE_ORGANIZATION.md](docs/CASSETTE_ORGANIZATION.md) and [MACRO_SUPPORT.md](docs/MACRO_SUPPORT.md) for complete details.
-
-### Custom Stub Names
-
-Override the stub name per test if needed:
+#### Concurrent Requests
 
 ```elixir
-@tag req_stub_name: MyApp.OtherStub
-test "with different stub" do
-  # Uses MyApp.OtherStub instead of default
-end
-```
-
-### Working with Spawned Processes
-
-If your test spawns processes that make HTTP requests, allow them access to the stub:
-
-```elixir
-test "with spawned task" do
+test "handles parallel requests" do
   task = Task.async(fn ->
-    Req.get(client(), url: "/data")
+    Req.get("https://api.example.com/data")
   end)
 
-  # Allow the task's process to use the stub
   Reqord.allow(MyApp.ReqStub, self(), task.pid)
-
   {:ok, response} = Task.await(task)
-  assert response.status == 200
 end
 ```
+
+#### Custom Matchers
+
+```elixir
+# Match on method, path, and body
+@tag match_on: [:method, :path, :body]
+test "strict matching" do
+  Req.post(url, json: %{name: "Alice"})
+end
+```
+
+#### Binary Data
+
+Reqord automatically handles binary responses:
+
+```elixir
+test "downloads image" do
+  {:ok, resp} = Req.get("https://example.com/image.png")
+  # Large binaries stored externally, replayed seamlessly
+end
+```
+
+#### Streaming Responses
+
+```elixir
+test "handles server-sent events" do
+  {:ok, resp} = Req.get("https://api.example.com/stream")
+  # Streaming responses captured and replayed
+end
+```
+
+## Configuration
+
+```elixir
+# config/test.exs
+config :reqord,
+  default_mode: :none,
+  cassette_dir: "test/support/cassettes",
+  match_on: [:method, :uri]
+```
+
+See [Advanced Configuration](docs/ADVANCED_CONFIGURATION.md) for all options.
 
 ## How It Works
 
+1. **First run**: Reqord records HTTP requests/responses to cassette files (JSONL format)
+2. **Subsequent runs**: Requests are matched against cassettes and responses replayed
+3. **Matching**: By default, matches on HTTP method + URI (configurable)
+4. **Ordering**: Timestamp-based chronological replay handles concurrent requests
+
 ### Request Matching
 
-Reqord matches requests using a deterministic key:
-
 ```
-METHOD NORMALIZED_URL BODY_HASH
+GET https://api.example.com/users?sort=name
+↓
+Normalized: GET https://api.example.com/users?sort=name (params sorted)
+↓
+Match cassette entry by: method + normalized URI + body hash
+↓
+Replay recorded response
 ```
-
-- **Method**: HTTP method (GET, POST, etc.)
-- **Normalized URL**: 
-  - Query parameters sorted lexicographically
-  - Auth params (`token`, `apikey`) removed
-- **Body Hash**: 
-  - SHA-256 hash for POST/PUT/PATCH
-  - `-` for other methods
-
-This means:
-- Query parameter order doesn't affect matching
-- Auth parameters don't affect matching
-- Different request bodies produce different keys
 
 ### Cassette Format
 
-Cassettes are stored as JSONL (JSON Lines) files in `test/support/cassettes/`:
+Cassettes are stored as JSON Lines (`.jsonl`):
 
-```json
-{"key":"GET https://api.example.com/users -","req":{...},"resp":{...}}
-{"key":"POST https://api.example.com/users abc123...","req":{...},"resp":{...}}
+```jsonl
+{"req":{"method":"GET","url":"..."},"resp":{"status":200,"body":"..."},"recorded_at":"2024-01-01T12:00:00.000000Z"}
+{"req":{"method":"POST","url":"..."},"resp":{"status":201,"body":"..."},"recorded_at":"2024-01-01T12:00:01.123456Z"}
 ```
 
-Each line is a JSON object containing:
-- `key` - The match key
-- `req` - Request details (method, URL, headers)
-- `resp` - Response (status, headers, base64-encoded body)
-
-### Redaction
-
-**🔒 Reqord ensures secrets never get committed to git** by automatically redacting sensitive data from cassettes.
-
-#### Built-in Redaction
-
-**Auth headers** (→ `<REDACTED>`):
-- `authorization`, `x-api-key`, `x-auth-token`, `cookie`, etc.
-
-**Auth query parameters** (→ `<REDACTED>`):
-- `token`, `api_key`, `access_token`, `refresh_token`, `jwt`, etc.
-
-**Response body patterns**:
-- Bearer tokens → `Bearer <REDACTED>`
-- Long alphanumeric strings (32+ chars) → `<REDACTED>`
-- GitHub tokens (`ghp_*`) → `<REDACTED>`
-- JSON keys containing "token", "key", "secret", "password" → `<REDACTED>`
-
-**Volatile headers** (removed entirely):
-- `date`, `server`, `set-cookie`, `request-id`, etc.
-
-#### Custom Redaction (VCR-style)
-
-For app-specific secrets, configure custom filters:
-
-```elixir
-# config/test.exs
-config :reqord, :filters, [
-  {"<API_KEY>", fn -> System.get_env("API_KEY") end},
-  {"<SHOPIFY_TOKEN>", fn -> Application.get_env(:my_app, :shopify_token) end}
-]
-```
-
-These filters apply to headers, query parameters, and response bodies.
-
-## Example Workflow
-
-```bash
-# 1. Write your test using Reqord.Case
-# 2. Record cassettes (hits live API)
-REQORD=record API_TOKEN=xxx mix test --include vcr
-
-# 3. Commit cassettes to git
-git add test/support/cassettes/
-git commit -m "Add API cassettes"
-
-# 4. Run tests in replay mode (no network calls)
-mix test
-
-# 5. Update cassettes when API changes
-REQORD=record API_TOKEN=xxx mix test --include vcr
-```
-
-## Integration with Req.Test
-
-Reqord works alongside your existing `Req.Test` stubs and expectations:
-
-```elixir
-test "with mixed stubs" do
-  # Add a high-priority stub for specific URL
-  Req.Test.stub(MyApp.ReqStub, fn
-    %{request_path: "/special"} = conn ->
-      Req.Test.json(conn, %{special: true})
-  end)
-
-  # This request hits your stub
-  {:ok, resp1} = Req.get(client(), url: "/special")
-  assert resp1.body["special"] == true
-
-  # This request falls through to VCR
-  {:ok, resp2} = Req.get(client(), url: "/other")
-  # Replayed from cassette or recorded
-end
-```
-
-## New Architecture: Timestamp-Based Ordering
-
-Reqord now includes a completely redesigned architecture that solves concurrent request ordering issues through microsecond-precision timestamps.
-
-### Problem Solved
-
-Previously, concurrent requests (like parallel POST-DELETE lifecycles) could be recorded in completion order rather than initiation order, causing replay mismatches:
-
-```elixir
-# Multiple tasks creating and deleting users concurrently
-Task.async(fn ->
-  {:ok, user} = create_user()     # POST recorded when it completes
-  delete_user(user.id)            # DELETE recorded when it completes
-end)
-```
-
-This could result in cassettes with mixed ordering, causing ID mismatches during replay.
-
-### Solution: Chronological Timestamps
-
-Every request now gets a `recorded_at` timestamp when initiated (not when completed):
-
-```json
-{
-  "req": {"method": "POST", "url": "/users", ...},
-  "resp": {"status": 201, ...},
-  "recorded_at": 1759657159025077
-}
-```
-
-During replay, requests are automatically sorted by timestamp to ensure chronological order, regardless of how they were written to the cassette.
-
-### Performance Benefits
-
-- **Async writes**: Non-blocking cassette writes during test execution
-- **Automatic batching**: Intelligent grouping of writes for better I/O performance
-- **Streaming reads**: Memory-efficient reading for large cassette files
-- **Background processing**: CassetteWriter GenServer handles all I/O asynchronously
-
-### Migration Note
-
-⚠️ **Breaking Change**: Cassette format has changed to include timestamps.
-
-**Migration steps:**
-1. Update to the latest version
-2. Regenerate all cassettes: `REQORD=all mix test`
-3. Commit the new timestamped cassettes
-
-Old cassettes without timestamps will not load and must be regenerated.
-
-## Advanced Configuration
-
-### Configurable Settings
-
-Reqord provides several configuration options to customize its behavior:
-
-```elixir
-# config/config.exs
-config :reqord,
-  # Cassette storage directory
-  cassette_dir: "test/support/cassettes",
-
-  # JSON library for encoding/decoding cassettes
-  json_library: Reqord.JSON.Jason,
-
-  # Default record mode
-  default_mode: :once,
-
-  # Auth parameters to redact from URLs
-  auth_params: ~w[token apikey api_key access_token refresh_token jwt bearer password secret],
-
-  # Auth headers to redact
-  auth_headers: ~w[authorization auth x-api-key x-auth-token x-access-token cookie],
-
-  # Volatile headers to remove from responses
-  volatile_headers: ~w[date server set-cookie request-id x-request-id x-amzn-trace-id],
-
-  # Custom redaction filters
-  filters: [
-    {"<API_KEY>", fn -> System.get_env("API_KEY") end},
-    {"<SHOPIFY_TOKEN>", fn -> Application.get_env(:my_app, :shopify_token) end}
-  ]
-```
-
-### Custom Cassette Directory
-
-Store cassettes in a different location:
-
-```elixir
-# config/test.exs
-config :reqord, cassette_dir: "test/vcr_cassettes"
-```
-
-### Custom Redaction Lists
-
-Add your own auth parameters and headers to redact:
-
-```elixir
-# config/config.exs
-config :reqord,
-  auth_params: ~w[token apikey api_key my_custom_token],
-  auth_headers: ~w[authorization x-api-key x-my-custom-auth],
-  volatile_headers: ~w[date server x-trace-id x-my-volatile-header]
-```
-
-### Custom JSON Library
-
-By default, Reqord uses Jason for JSON encoding/decoding. You can configure a different JSON library to:
-
-- Use your existing JSON library for consistency across your application
-- Take advantage of performance characteristics of different JSON libraries
-- Avoid adding Jason as a dependency if you already use another JSON library
-
-```elixir
-# config/config.exs
-config :reqord, :json_library, MyApp.JSONAdapter
-```
-
-Your adapter must implement the `Reqord.JSON` behavior:
-
-```elixir
-defmodule MyApp.JSONAdapter do
-  @behaviour Reqord.JSON
-
-  @impl Reqord.JSON
-  def encode!(data), do: MyJSON.encode!(data)
-
-  @impl Reqord.JSON
-  def decode(binary), do: MyJSON.decode(binary)
-
-  @impl Reqord.JSON
-  def decode!(binary), do: MyJSON.decode!(binary)
-end
-```
-
-**Popular JSON libraries you can adapt:**
-- `Poison` - Pure Elixir JSON library
-- `JSX` - Erlang JSON library
-- `jiffy` - Fast NIF-based JSON library
-
-### Custom Default Stub Name
-
-```elixir
-defmodule MyApp.APITest do
-  use Reqord.Case
-
-  # Override for all tests in this module
-  defp default_stub_name, do: MyApp.CustomStub
-end
-```
-
-### Programmatic Installation
-
-For advanced use cases, you can install VCR manually:
-
-```elixir
-setup do
-  Reqord.install!(
-    name: MyApp.ReqStub,
-    cassette: "my_test",
-    mode: :replay
-  )
-
-  :ok
-end
-```
-
-## CLI Commands
-
-Reqord provides several Mix tasks to help manage your cassettes:
-
-### `mix reqord.show`
-
-Display cassette contents in a readable format:
-
-```bash
-# Show all entries in a cassette
-mix reqord.show MyTest/my_test.jsonl
-
-# Filter by URL pattern
-mix reqord.show MyTest/my_test.jsonl --grep "/users"
-
-# Filter by HTTP method
-mix reqord.show MyTest/my_test.jsonl --method POST
-
-# Show raw JSON
-mix reqord.show MyTest/my_test.jsonl --raw
-
-# Decode and pretty-print JSON response bodies
-mix reqord.show MyTest/my_test.jsonl --decode-body
-```
-
-### `mix reqord.audit`
-
-Audit cassettes for potential issues:
-
-```bash
-# Run all audits
-mix reqord.audit
-
-# Check for potential secrets only
-mix reqord.audit --secrets-only
-
-# Find stale cassettes (older than 90 days)
-mix reqord.audit --stale-days 90
-```
-
-The audit task reports:
-- **Secrets**: Potential sensitive data that should be redacted (tokens, API keys, etc.)
-- **Stale cassettes**: Files older than specified days
-- **Unused cassettes**: Entries not hit during test runs (requires coverage data)
-
-### `mix reqord.prune`
-
-Clean up cassette files:
-
-```bash
-# Preview what would be removed (dry run)
-mix reqord.prune --dry-run
-
-# Remove empty cassettes and duplicates
-mix reqord.prune
-
-# Remove cassettes older than 180 days
-mix reqord.prune --stale-days 180
-
-# Remove only duplicate entries
-mix reqord.prune --duplicates-only
-
-# Remove only empty files
-mix reqord.prune --empty-only
-
-# Skip confirmation
-mix reqord.prune --force
-```
-
-### `mix reqord.rename`
-
-Rename or move cassette files:
-
-```bash
-# Rename a single cassette
-mix reqord.rename old_name.jsonl new_name.jsonl
-
-# Move all cassettes from one module to another
-mix reqord.rename --from "OldModule/" --to "NewModule/"
-
-# Preview changes
-mix reqord.rename --from "OldModule/" --to "NewModule/" --dry-run
-
-# Migrate cassettes to latest schema (for future schema changes)
-mix reqord.rename --migrate
-```
-
-## Example API for Testing
-
-This repository includes a test API server (`test_api/`) for demonstrating Reqord's functionality. It's a simple REST API with authentication that's used in the example tests.
-
-### Quick Start
-
-Use the provided script to automatically record example cassettes:
-
-```bash
-./scripts/record_cassettes.sh
-```
-
-This will:
-1. Start the test API server
-2. Record all example test cassettes
-3. Stop the server
-
-### Running Example Tests
-
-```bash
-# Run in replay mode (uses pre-recorded cassettes, no network)
-mix test test/example_api_test.exs
-
-# Re-record cassettes
-REQORD=all mix test test/example_api_test.exs
-```
-
-See `test_api/README.md` for more details on the test API.
-
-## Troubleshooting
-
-### "No cassette entry found" error
-
-This means you're in `:once` mode but the cassette doesn't have a matching entry.
-
-**Solution**: Record the cassette first:
-
-```bash
-REQORD=all mix test
-```
-
-Or use new_episodes mode to record on misses:
-
-```bash
-REQORD=new_episodes mix test
-```
-
-### Tests fail with "No Req.Test stub found"
-
-Make sure you've configured `Req.Test` in your test config and are using the correct stub name.
-
-### Spawned processes can't make requests
-
-Use `Reqord.allow/3` to grant access:
-
-```elixir
-Reqord.allow(MyApp.ReqStub, self(), spawned_pid)
-```
-
-## Limitations
-
-- Response bodies are base64-encoded, not human-readable in cassettes
-- Request matching is based on method + URI by default (configurable via `match_on`)
-
-## Contributing
-
-Contributions welcome! Please open an issue or PR on GitHub.
+## Comparison with ExVCR
+
+| Feature | Reqord | ExVCR |
+|---------|--------|-------|
+| HTTP client | Req only | HTTPoison, etc. |
+| App code changes | None | Wrap HTTP calls |
+| Async tests | ✅ Full support | ❌ Limited |
+| Concurrent requests | ✅ Chronological | ❌ Order issues |
+| Binary data | ✅ External storage | ❌ Inline only |
+| Streaming | ✅ Full support | ❌ Not supported |
+| Performance | ✅ Async writes | ❌ Blocking |
+
+## Examples
+
+Check out the `examples/` directory for complete examples:
+
+- `examples/macro_generated_tests.exs` - Macro-generated test patterns
+- More examples in the documentation guides
 
 ## License
 
-Apache 2.0 - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) for details.
+
+## Credits
+
+Inspired by [ExVCR](https://github.com/parroty/exvcr) and Ruby's [VCR](https://github.com/vcr/vcr).
