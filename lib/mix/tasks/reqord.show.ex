@@ -191,6 +191,7 @@ defmodule Mix.Tasks.Reqord.Show do
 
     if resp["body_b64"] do
       body = Base.decode64!(resp["body_b64"])
+      body = Helpers.decompress_body(body, headers)
       body_preview = format_body(body, headers, opts)
       Mix.Shell.IO.info("│ Body (#{byte_size(body)} bytes):")
 

@@ -173,6 +173,8 @@ defmodule Mix.Tasks.Reqord.Audit do
     issues =
       if resp_body_b64 do
         body = Base.decode64!(resp_body_b64)
+        resp_headers = get_in(entry, ["resp", "headers"]) || %{}
+        body = Helpers.decompress_body(body, resp_headers)
 
         if matches_secret_pattern?(body) do
           issues ++

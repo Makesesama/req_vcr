@@ -173,4 +173,32 @@ defmodule Reqord.Tasks.Helpers do
 
     File.write!(path, content)
   end
+
+  @doc """
+  Decompresses a response body if it has gzip content-encoding.
+
+  Returns the decompressed body if gzipped, otherwise returns the original body.
+  If decompression fails, returns the original body.
+
+  ## Examples
+
+      decompress_body(gzipped_binary, %{"content-encoding" => "gzip"})
+      #=> decompressed_binary
+
+      decompress_body(plain_binary, %{"content-type" => "application/json"})
+      #=> plain_binary
+
+  """
+  @spec decompress_body(binary(), map()) :: binary()
+  def decompress_body(body, headers) do
+    content_encoding = headers["content-encoding"] || headers["Content-Encoding"] || ""
+
+    if String.contains?(content_encoding, "gzip") do
+      :zlib.gunzip(body)
+    else
+      body
+    end
+  rescue
+    _ -> body
+  end
 end
