@@ -72,9 +72,17 @@ defmodule Reqord.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"],
+      extras: [
+        "README.md",
+        "CHANGELOG.md",
+        "docs/CASSETTE_ORGANIZATION.md",
+        "docs/MACRO_SUPPORT.md"
+      ],
       source_url: @source_url,
-      source_ref: "v#{@version}"
+      source_ref: "v#{@version}",
+      groups_for_extras: [
+        Guides: ~r/docs\//
+      ]
     ]
   end
 

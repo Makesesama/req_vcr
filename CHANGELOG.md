@@ -15,11 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Configurable Storage Thresholds** - Control when to use external vs inline storage
   - **Enhanced CassetteEntry.Response** - New fields for body_encoding, body_external_ref, and stream_metadata
   - **Pluggable Storage Extensions** - Extended Storage.Behavior with object and stream storage methods
+- **Flexible Cassette Organization** - Multiple strategies for organizing cassettes
+  - **Explicit Path Override** - Use `:vcr_path` tag to specify exact cassette path per test
+  - **Named Path Builders** - Define reusable path builders in config and reference by name in test modules
+  - **Global Path Builder** - Configure a single path builder function for all tests
+  - **Macro Context Support** - New `Reqord.Case.set_cassette_context/1` for passing compile-time variables to path builders
+  - **Priority System** - Clear precedence: vcr_path > named builder > global builder > vcr tag > default
+  - **Documentation** - Comprehensive guides in `docs/CASSETTE_ORGANIZATION.md` and `docs/MACRO_SUPPORT.md`
 
 ### Changed
 - **Enhanced Response Creation** - New `CassetteEntry.Response.new_with_raw_body/3` for automatic encoding detection
 - **Improved Replay System** - Enhanced body loading with support for external storage and streaming content
 - **Extended Configuration** - New config options for max_inline_size, object_directory, binary_storage, and stream_speed
+- **Documentation Organization** - Moved guide documents to `docs/` directory and added to hex docs
 
 ## [0.3.0] - 2025-10-05
 

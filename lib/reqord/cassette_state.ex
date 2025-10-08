@@ -7,6 +7,9 @@ defmodule Reqord.CassetteState do
 
   Following ExVCR's pattern, this uses GenServer for robust state management
   that can be accessed from any process.
+
+  Additionally, this module manages per-process cassette context, which allows
+  macro-generated tests to provide additional metadata for cassette naming.
   """
 
   use GenServer
@@ -122,6 +125,56 @@ defmodule Reqord.CassetteState do
     end
 
     GenServer.cast(name, :reset_position)
+  end
+
+  @doc """
+  Stores cassette context for the current process.
+
+  This allows macro-generated tests to provide additional metadata that will be
+  merged with the test context when determining cassette names.
+
+  ## Examples
+
+      # In a macro-generated test setup
+      Reqord.CassetteState.put_context(self(), %{
+        provider: "google",
+        model: "gemini-2.0-flash"
+      })
+
+  """
+  @spec put_context(pid(), map()) :: :ok
+  def put_context(pid, context) when is_pid(pid) and is_map(context) do
+    Process.put({:reqord_cassette_context, pid}, context)
+    :ok
+  end
+
+  @doc """
+  Retrieves cassette context for the current process.
+
+  Returns an empty map if no context has been set.
+
+  ## Examples
+
+      iex> Reqord.CassetteState.get_context(self())
+      %{}
+
+      iex> Reqord.CassetteState.put_context(self(), %{model: "gpt-4"})
+      iex> Reqord.CassetteState.get_context(self())
+      %{model: "gpt-4"}
+
+  """
+  @spec get_context(pid()) :: map()
+  def get_context(pid) when is_pid(pid) do
+    Process.get({:reqord_cassette_context, pid}, %{})
+  end
+
+  @doc """
+  Clears cassette context for the current process.
+  """
+  @spec clear_context(pid()) :: :ok
+  def clear_context(pid) when is_pid(pid) do
+    Process.delete({:reqord_cassette_context, pid})
+    :ok
   end
 
   # GenServer Callbacks
