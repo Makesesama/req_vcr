@@ -11,6 +11,26 @@ defmodule Reqord.Config do
 
       config :reqord, :cassette_dir, "test/support/cassettes"
 
+  ### Cassette Path Builder
+
+  Configure a custom function to build cassette paths from test context:
+
+      config :reqord,
+        cassette_path_builder: fn context ->
+          provider = context.tags[:provider] || "default"
+          model = context.tags[:model] || "default"
+          test_name = context.test |> Atom.to_string() |> String.replace(~r/^test /, "")
+          "\#{provider}/\#{model}/\#{test_name}"
+        end
+
+  The context map contains:
+  - `context.test` - Test name as an atom
+  - `context.module` - Test module name
+  - `context.tags` - Map of test tags
+  - Any other test context values
+
+  See `Reqord.Case` for more details on cassette naming strategies.
+
   ### Auth Parameters (for redaction)
 
       config :reqord, :auth_params, ~w[token apikey api_key access_token refresh_token jwt bearer password secret]

@@ -64,15 +64,48 @@ defmodule Reqord.Case do
 
   ## Cassette Naming
 
-  By default, cassettes are named after the test module and test name:
-  `"ModuleName/test_name.jsonl"`
+  Reqord supports multiple ways to organize your cassettes, with the following priority:
 
-  Override with the `:vcr` tag:
+  ### 1. Explicit Path (`:vcr_path` tag)
+
+  Use the `:vcr_path` tag to explicitly set the cassette path:
+
+      @tag vcr_path: "providers/google/gemini-2.0-flash/basic_chat"
+      test "basic chat" do
+        # Uses "providers/google/gemini-2.0-flash/basic_chat.jsonl"
+      end
+
+  ### 2. Custom Path Builder Function
+
+  Configure a global path builder function in your config:
+
+      config :reqord,
+        cassette_path_builder: fn context ->
+          provider = context.tags[:provider] || "default"
+          model = context.tags[:model] || "default"
+          "\#{provider}/\#{model}/\#{context.test}"
+        end
+
+  Then use tags in your tests:
+
+      @tag provider: "google", model: "gemini-2.0-flash"
+      test "basic chat" do
+        # Uses "google/gemini-2.0-flash/test_basic_chat.jsonl"
+      end
+
+  ### 3. Simple Name Override (`:vcr` tag)
+
+  Override with a simple name using the `:vcr` tag:
 
       @tag vcr: "my_custom_cassette"
       test "example" do
         # Uses "my_custom_cassette.jsonl"
       end
+
+  ### 4. Default Behavior
+
+  By default, cassettes are named after the test module and test name:
+  `"ModuleName/test_name.jsonl"`
 
   ## Spawned Processes
 
@@ -149,24 +182,37 @@ defmodule Reqord.Case do
       end
 
       defp cassette_name(context) do
-        case context[:vcr] || context[:integration] do
-          name when is_binary(name) ->
-            name
+        cond do
+          # 1. Explicit path via :vcr_path tag (highest priority)
+          path = context[:vcr_path] ->
+            path
 
-          _ ->
-            module_name =
-              __MODULE__
-              |> Module.split()
-              |> List.last()
-              |> String.replace(~r/Test$/, "")
+          # 2. Custom path builder function from config
+          builder = Application.get_env(:reqord, :cassette_path_builder) ->
+            builder.(context)
 
-            test_name =
-              context.test
-              |> Atom.to_string()
-              |> String.replace(~r/^test /, "")
-              |> String.replace(~r/\s+/, "_")
+          # 3. Simple name override via :vcr tag (backwards compatibility)
+          true ->
+            case context[:vcr] || context[:integration] do
+              name when is_binary(name) ->
+                name
 
-            "#{module_name}/#{test_name}"
+              _ ->
+                # 4. Default behavior - auto-generate from module and test name
+                module_name =
+                  __MODULE__
+                  |> Module.split()
+                  |> List.last()
+                  |> String.replace(~r/Test$/, "")
+
+                test_name =
+                  context.test
+                  |> Atom.to_string()
+                  |> String.replace(~r/^test /, "")
+                  |> String.replace(~r/\s+/, "_")
+
+                "#{module_name}/#{test_name}"
+            end
         end
       end
 
