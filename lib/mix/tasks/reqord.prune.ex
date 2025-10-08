@@ -26,9 +26,9 @@ defmodule Mix.Tasks.Reqord.Prune do
 
   use Mix.Task
 
-  @shortdoc "Remove unused cassette entries and files"
+  alias Reqord.Tasks.Helpers
 
-  @cassette_dir "test/support/cassettes"
+  @shortdoc "Remove unused cassette entries and files"
 
   @impl Mix.Task
   def run(args) do
@@ -44,12 +44,8 @@ defmodule Mix.Tasks.Reqord.Prune do
         ]
       )
 
-    cassette_dir = opts[:dir] || @cassette_dir
-
-    unless File.dir?(cassette_dir) do
-      Mix.Shell.IO.error("Cassette directory not found: #{cassette_dir}")
-      exit({:shutdown, 1})
-    end
+    cassette_dir = opts[:dir] || Helpers.default_cassette_dir()
+    Helpers.ensure_directory_exists!(cassette_dir)
 
     Mix.Shell.IO.info("Scanning cassettes in #{cassette_dir}...\n")
 
@@ -63,7 +59,7 @@ defmodule Mix.Tasks.Reqord.Prune do
     report_actions(actions, opts)
 
     unless opts[:dry_run] do
-      if opts[:force] or confirm_prune(actions) do
+      if opts[:force] == true or confirm_prune(actions) do
         execute_actions(actions, opts)
         Mix.Shell.IO.info("\n✓ Prune completed!")
       else
@@ -104,22 +100,11 @@ defmodule Mix.Tasks.Reqord.Prune do
   end
 
   defp find_cassettes(dir) do
-    Path.join(dir, "**/*.jsonl")
-    |> Path.wildcard()
+    dir
+    |> Helpers.find_cassettes()
     |> Enum.map(fn path ->
-      {path, load_cassette(path)}
+      {path, Helpers.load_entries(path)}
     end)
-  end
-
-  defp load_cassette(path) do
-    path
-    |> File.stream!()
-    |> Stream.map(&String.trim/1)
-    |> Stream.reject(&(&1 == ""))
-    |> Stream.map(&Jason.decode!/1)
-    |> Enum.to_list()
-  rescue
-    _ -> []
   end
 
   defp find_empty_cassettes(cassettes) do

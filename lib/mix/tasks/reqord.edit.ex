@@ -68,9 +68,9 @@ defmodule Mix.Tasks.Reqord.Edit do
 
   use Mix.Task
 
-  @shortdoc "Edit cassette entries in your editor"
+  alias Reqord.Tasks.Helpers
 
-  @cassette_dir "test/support/cassettes"
+  @shortdoc "Edit cassette entries in your editor"
 
   @impl Mix.Task
   def run(args) do
@@ -98,24 +98,11 @@ defmodule Mix.Tasks.Reqord.Edit do
   end
 
   defp edit_cassette(name, opts) do
-    # Handle both relative and absolute paths
-    path =
-      if Path.absname(name) == name or File.exists?(name) do
-        # Already absolute path or exists as-is
-        name
-      else
-        # Relative to cassette dir
-        cassette_dir = opts[:dir] || @cassette_dir
-        Path.join(cassette_dir, name)
-      end
-
-    unless File.exists?(path) do
-      Mix.Shell.IO.error("Cassette not found: #{path}")
-      exit({:shutdown, 1})
-    end
+    path = Helpers.resolve_cassette_path(name, opts)
+    Helpers.ensure_cassette_exists!(path)
 
     # Load and parse entries
-    entries = load_entries(path)
+    entries = Helpers.load_entries(path)
 
     if entries == [] do
       Mix.Shell.IO.info("Cassette is empty: #{path}")
@@ -162,7 +149,7 @@ defmodule Mix.Tasks.Reqord.Edit do
         updated_entries = replace_entries(entries, filtered_entries, edited_entries, opts)
 
         # Write back to file
-        write_entries(path, updated_entries)
+        Helpers.write_entries(path, updated_entries)
 
         Mix.Shell.IO.info("✓ Successfully updated #{count} entries in #{path}")
 
@@ -171,20 +158,6 @@ defmodule Mix.Tasks.Reqord.Edit do
         Mix.Shell.IO.error("Cassette was not modified")
         exit({:shutdown, 1})
     end
-  end
-
-  defp load_entries(path) do
-    path
-    |> File.stream!()
-    |> Stream.map(&String.trim/1)
-    |> Stream.reject(&(&1 == ""))
-    |> Enum.map(fn line ->
-      case Jason.decode(line) do
-        {:ok, entry} -> entry
-        {:error, _} -> nil
-      end
-    end)
-    |> Enum.reject(&is_nil/1)
   end
 
   defp filter_entries(entries, opts) do
@@ -325,15 +298,5 @@ defmodule Mix.Tasks.Reqord.Edit do
     method = get_in(entry, ["req", "method"]) || ""
     recorded_at = entry["recorded_at"] || ""
     "#{method}:#{url}:#{recorded_at}"
-  end
-
-  defp write_entries(path, entries) do
-    content =
-      entries
-      |> Enum.map(&Jason.encode!/1)
-      |> Enum.join("\n")
-      |> Kernel.<>("\n")
-
-    File.write!(path, content)
   end
 end

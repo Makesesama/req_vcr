@@ -6,8 +6,11 @@ defmodule Mix.Tasks.Reqord.Show do
 
   ## Usage
 
-      # Show all entries in a cassette
+      # Show all entries in a cassette (relative to cassette dir)
       mix reqord.show my_test.jsonl
+
+      # Show with full/relative path
+      mix reqord.show test/support/cassettes/auth_param_test.jsonl
 
       # Show entries matching a URL pattern
       mix reqord.show my_test.jsonl --grep "/users"
@@ -37,9 +40,9 @@ defmodule Mix.Tasks.Reqord.Show do
 
   use Mix.Task
 
-  @shortdoc "Display cassette contents"
+  alias Reqord.Tasks.Helpers
 
-  @cassette_dir "test/support/cassettes"
+  @shortdoc "Display cassette contents"
 
   @impl Mix.Task
   def run(args) do
@@ -71,15 +74,10 @@ defmodule Mix.Tasks.Reqord.Show do
   end
 
   defp show_cassette(name, opts) do
-    cassette_dir = opts[:dir] || @cassette_dir
-    path = Path.join(cassette_dir, name)
+    path = Helpers.resolve_cassette_path(name, opts)
+    Helpers.ensure_cassette_exists!(path)
 
-    unless File.exists?(path) do
-      Mix.Shell.IO.error("Cassette not found: #{path}")
-      exit({:shutdown, 1})
-    end
-
-    entries = load_cassette(path)
+    entries = Helpers.load_entries(path)
 
     if Enum.empty?(entries) do
       Mix.Shell.IO.info("Cassette is empty: #{path}")
@@ -102,19 +100,6 @@ defmodule Mix.Tasks.Reqord.Show do
     else
       show_formatted(filtered_entries, opts)
     end
-  end
-
-  defp load_cassette(path) do
-    path
-    |> File.stream!()
-    |> Stream.map(&String.trim/1)
-    |> Stream.reject(&(&1 == ""))
-    |> Stream.map(&Reqord.JSON.decode!/1)
-    |> Enum.to_list()
-  rescue
-    e ->
-      Mix.Shell.IO.error("Failed to load cassette: #{inspect(e)}")
-      exit({:shutdown, 1})
   end
 
   defp filter_entries(entries, opts) do

@@ -24,9 +24,10 @@ defmodule Mix.Tasks.Reqord.Audit do
 
   use Mix.Task
 
+  alias Reqord.Tasks.Helpers
+
   @shortdoc "Audit cassette files for secrets, unused entries, and staleness"
 
-  @cassette_dir "test/support/cassettes"
   @default_stale_days 365
 
   # Patterns that might indicate secrets
@@ -60,22 +61,25 @@ defmodule Mix.Tasks.Reqord.Audit do
         ]
       )
 
-    cassette_dir = opts[:dir] || @cassette_dir
+    cassette_dir = opts[:dir] || Helpers.default_cassette_dir()
     stale_days = opts[:stale_days] || @default_stale_days
 
-    unless File.dir?(cassette_dir) do
-      Mix.Shell.IO.error("Cassette directory not found: #{cassette_dir}")
-      exit({:shutdown, 1})
-    end
+    Helpers.ensure_directory_exists!(cassette_dir)
 
     Mix.Shell.IO.info("Auditing cassettes in #{cassette_dir}...\n")
 
-    cassettes = find_cassettes(cassette_dir)
+    cassette_paths = Helpers.find_cassettes(cassette_dir)
 
-    if Enum.empty?(cassettes) do
+    if Enum.empty?(cassette_paths) do
       Mix.Shell.IO.info("No cassettes found.")
       exit({:shutdown, 0})
     end
+
+    # Load entries for each cassette
+    cassettes =
+      Enum.map(cassette_paths, fn path ->
+        {path, Helpers.load_entries(path)}
+      end)
 
     issues = %{
       secrets: [],
@@ -108,25 +112,6 @@ defmodule Mix.Tasks.Reqord.Audit do
       end
 
     report_issues(issues, opts)
-  end
-
-  defp find_cassettes(dir) do
-    Path.join(dir, "**/*.jsonl")
-    |> Path.wildcard()
-    |> Enum.map(fn path ->
-      {path, load_cassette(path)}
-    end)
-  end
-
-  defp load_cassette(path) do
-    path
-    |> File.stream!()
-    |> Stream.map(&String.trim/1)
-    |> Stream.reject(&(&1 == ""))
-    |> Stream.map(&Jason.decode!/1)
-    |> Enum.to_list()
-  rescue
-    _ -> []
   end
 
   defp check_secrets(cassettes) do

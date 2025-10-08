@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Validates JSON structure after editing before saving
   - Filter by entry index or URL pattern
   - Useful for redacting emails, account IDs, and other PII from response bodies
+- **Improved Mix Task Path Handling** - All Mix tasks now support flexible path resolution
+  - Accept short names (relative to cassette dir), relative paths, and absolute paths
+  - Consistent with `mix test` command usage
+  - Shared `Reqord.Tasks.Helpers` module reduces code duplication across tasks
 
 ### Changed
 - **Enhanced Response Creation** - New `CassetteEntry.Response.new_with_raw_body/3` for automatic encoding detection
