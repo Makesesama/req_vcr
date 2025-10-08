@@ -35,6 +35,7 @@ defmodule Mix.Tasks.Reqord.Show do
     * `--response-only` - Only show response details
     * `--raw` - Show raw JSON instead of formatted output
     * `--decode-body` - Decode and pretty-print response bodies
+    * `--no-truncate` - Show full response bodies without truncation
     * `--dir PATH` - Cassette directory (default: test/support/cassettes)
   """
 
@@ -55,6 +56,7 @@ defmodule Mix.Tasks.Reqord.Show do
           response_only: :boolean,
           raw: :boolean,
           decode_body: :boolean,
+          no_truncate: :boolean,
           dir: :string
         ]
       )
@@ -211,11 +213,14 @@ defmodule Mix.Tasks.Reqord.Show do
         try do
           body |> Reqord.JSON.decode!() |> Reqord.JSON.encode!()
         rescue
-          _ -> truncate_body(body)
+          _ -> truncate_body(body, opts)
         end
 
+      opts[:no_truncate] ->
+        body
+
       byte_size(body) > 500 ->
-        truncate_body(body)
+        truncate_body(body, opts)
 
       true ->
         body
@@ -227,11 +232,15 @@ defmodule Mix.Tasks.Reqord.Show do
     String.contains?(content_type, "json")
   end
 
-  defp truncate_body(body) do
-    if byte_size(body) > 500 do
-      String.slice(body, 0..497) <> "..."
-    else
+  defp truncate_body(body, opts) do
+    if opts[:no_truncate] do
       body
+    else
+      if byte_size(body) > 500 do
+        String.slice(body, 0..497) <> "..."
+      else
+        body
+      end
     end
   end
 end

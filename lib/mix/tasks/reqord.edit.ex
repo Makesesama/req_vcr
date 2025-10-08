@@ -128,7 +128,7 @@ defmodule Mix.Tasks.Reqord.Edit do
     end
 
     # Format as pretty JSON for editing
-    json_content = format_entries_for_editing(filtered_entries)
+    json_content = format_entries_for_editing(filtered_entries, opts)
 
     # Open editor
     edited_content = open_in_editor(json_content)
@@ -144,6 +144,9 @@ defmodule Mix.Tasks.Reqord.Edit do
 
           exit({:shutdown, 1})
         end
+
+        # Re-encode bodies back to base64
+        edited_entries = Enum.map(edited_entries, &encode_body_after_edit/1)
 
         # Replace edited entries in original list
         updated_entries = replace_entries(entries, filtered_entries, edited_entries, opts)
@@ -184,9 +187,49 @@ defmodule Mix.Tasks.Reqord.Edit do
     end)
   end
 
-  defp format_entries_for_editing(entries) do
-    Enum.map_join(entries, "\n---\n", &Jason.encode!(&1, pretty: true))
+  defp format_entries_for_editing(entries, _opts) do
+    entries_for_edit = Enum.map(entries, &decode_body_for_edit/1)
+
+    Enum.map_join(entries_for_edit, "\n---\n", &Jason.encode!(&1, pretty: true))
     |> Kernel.<>("\n")
+  end
+
+  defp decode_body_for_edit(entry) do
+    if body_b64 = get_in(entry, ["resp", "body_b64"]) do
+      try do
+        body = Base.decode64!(body_b64)
+        headers = get_in(entry, ["resp", "headers"]) || %{}
+        body = Helpers.decompress_body(body, headers)
+
+        # Try to parse as JSON for better editing
+        decoded_body =
+          try do
+            Jason.decode!(body)
+          rescue
+            _ -> body
+          end
+
+        put_in(entry, ["resp", "body_decoded"], decoded_body)
+        |> Map.update!("resp", &Map.delete(&1, "body_b64"))
+      rescue
+        _ -> entry
+      end
+    else
+      entry
+    end
+  end
+
+  defp encode_body_after_edit(entry) do
+    if body_decoded = get_in(entry, ["resp", "body_decoded"]) do
+      # Convert body back to base64
+      body = if is_binary(body_decoded), do: body_decoded, else: Jason.encode!(body_decoded)
+      body_b64 = Base.encode64(body)
+
+      put_in(entry, ["resp", "body_b64"], body_b64)
+      |> Map.update!("resp", &Map.delete(&1, "body_decoded"))
+    else
+      entry
+    end
   end
 
   defp open_in_editor(content) do
