@@ -225,13 +225,16 @@ Cassettes are stored as JSON Lines (`.jsonl`):
 
 | Feature | Reqord | ExVCR |
 |---------|--------|-------|
-| HTTP client | Req only | HTTPoison, etc. |
-| App code changes | None | Wrap HTTP calls |
-| Async tests | ✅ Full support | ❌ Limited |
-| Concurrent requests | ✅ Chronological | ❌ Order issues |
-| Binary data | ✅ External storage | ❌ Inline only |
-| Streaming | ✅ Full support | ❌ Not supported |
-| Performance | ✅ Async writes | ❌ Blocking |
+| **Best for** | API clients built on Req | Full-fledged apps with various HTTP libraries |
+| **HTTP clients** | Req only | HTTPoison, HTTPotion, Hackney, and more |
+| **Integration** | Req.Test (no code changes) | Wrap HTTP calls with `use_cassette` |
+| **Binary data** | External storage for large files | Inline Base64 encoding |
+| **Streaming** | Full SSE/chunked response support | Standard request/response pairs |
+| **Cassette writes** | Async (non-blocking) | Synchronous |
+
+**Choose Reqord if:** You're building an API client or library using Req and want zero application code changes.
+
+**Choose ExVCR if:** You need to support multiple HTTP clients in a full application or use libraries other than Req.
 
 ## Examples
 
