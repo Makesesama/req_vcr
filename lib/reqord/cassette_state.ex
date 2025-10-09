@@ -31,7 +31,11 @@ defmodule Reqord.CassetteState do
     name = state_name(cassette_path)
 
     if Process.whereis(name) do
-      GenServer.stop(name)
+      try do
+        GenServer.stop(name)
+      catch
+        :exit, {:noproc, _} -> :ok
+      end
     end
 
     :ok
