@@ -27,7 +27,7 @@ VCR-style HTTP recording and replay for Elixir's [Req](https://hexdocs.pm/req) l
 def deps do
   [
     {:req, "~> 0.5"},
-    {:reqord, "~> 0.3.0"}
+    {:reqord, "~> 0.4.0"}
   ]
 end
 ```

@@ -9,7 +9,7 @@ Add `reqord` to your dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:reqord, "~> 0.3.0"}
+    {:reqord, "~> 0.4.0"}
   ]
 end
 ```
