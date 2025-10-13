@@ -61,8 +61,9 @@ defmodule Mix.Tasks.Reqord.Edit do
 
   ## Error Handling
 
-  - If JSON is invalid after editing, the task shows errors and exits without saving
-  - Original cassette is preserved if validation fails
+  - If JSON is invalid after editing, the task shows errors and prompts to retry
+  - You can return to the editor to fix errors or abort to leave cassette unchanged
+  - Original cassette is preserved if validation fails or you choose not to retry
   - Use `mix reqord.show` to verify changes after editing
   """
 
@@ -130,8 +131,13 @@ defmodule Mix.Tasks.Reqord.Edit do
     # Format as pretty JSON for editing
     json_content = format_entries_for_editing(filtered_entries, opts)
 
+    # Open editor and loop until valid
+    edit_and_validate_loop(json_content, entries, filtered_entries, count, path, opts)
+  end
+
+  defp edit_and_validate_loop(content, entries, filtered_entries, count, path, opts) do
     # Open editor
-    edited_content = open_in_editor(json_content)
+    edited_content = open_in_editor(content)
 
     # Parse edited content
     case parse_edited_content(edited_content) do
@@ -142,25 +148,41 @@ defmodule Mix.Tasks.Reqord.Edit do
             "Entry count mismatch: started with #{length(filtered_entries)}, got #{length(edited_entries)}"
           )
 
-          exit({:shutdown, 1})
+          if prompt_retry() do
+            edit_and_validate_loop(edited_content, entries, filtered_entries, count, path, opts)
+          else
+            Mix.Shell.IO.info("Cassette was not modified")
+            exit({:shutdown, 1})
+          end
+        else
+          # Re-encode bodies back to base64
+          edited_entries = Enum.map(edited_entries, &encode_body_after_edit/1)
+
+          # Replace edited entries in original list
+          updated_entries = replace_entries(entries, filtered_entries, edited_entries, opts)
+
+          # Write back to file
+          Helpers.write_entries(path, updated_entries)
+
+          Mix.Shell.IO.info("✓ Successfully updated #{count} entries in #{path}")
         end
-
-        # Re-encode bodies back to base64
-        edited_entries = Enum.map(edited_entries, &encode_body_after_edit/1)
-
-        # Replace edited entries in original list
-        updated_entries = replace_entries(entries, filtered_entries, edited_entries, opts)
-
-        # Write back to file
-        Helpers.write_entries(path, updated_entries)
-
-        Mix.Shell.IO.info("✓ Successfully updated #{count} entries in #{path}")
 
       {:error, reason} ->
         Mix.Shell.IO.error("Failed to parse edited content: #{reason}")
-        Mix.Shell.IO.error("Cassette was not modified")
-        exit({:shutdown, 1})
+
+        if prompt_retry() do
+          edit_and_validate_loop(edited_content, entries, filtered_entries, count, path, opts)
+        else
+          Mix.Shell.IO.info("Cassette was not modified")
+          exit({:shutdown, 1})
+        end
     end
+  end
+
+  defp prompt_retry do
+    response = Mix.Shell.IO.prompt("Would you like to retry editing? [Y/n]")
+    response = String.trim(response) |> String.downcase()
+    response == "" or response == "y" or response == "yes"
   end
 
   defp filter_entries(entries, opts) do
